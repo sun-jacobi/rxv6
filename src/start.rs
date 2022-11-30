@@ -1,10 +1,13 @@
+
+
 //=================================
 // jump from entry.S
 
 use crate::kmain;
 use crate::risc;
 use core::arch::asm;
-#[allow(dead_code)]
+
+
 #[no_mangle]
 extern "C" fn start() {
     use riscv::register;
@@ -22,11 +25,14 @@ extern "C" fn start() {
     risc::setup_medeleg();
     risc::setup_mideleg();
     risc::setup_sie();
+    
 
+    
     // configure Physical Memory Protection to give supervisor mode
     // access to all of physical memory.
     register::pmpaddr0::write(0x3fffffffffffff);
     register::pmpcfg0::write(0xf);
+
 
     // ask for clock interrupts.
     timer_init();

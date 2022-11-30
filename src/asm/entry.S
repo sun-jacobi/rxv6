@@ -19,3 +19,9 @@ _entry:
         call start
 spin:
         j spin
+
+
+        .section .data
+        .align 4
+stack0:
+        .space 16384*8

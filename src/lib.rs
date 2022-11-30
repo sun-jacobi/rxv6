@@ -1,4 +1,8 @@
 #![no_std]
+#![feature(panic_info_message)]
+
+
+
 #[no_mangle]
 extern "C" fn abort() -> ! {
     use core::arch::asm;
@@ -9,9 +13,22 @@ extern "C" fn abort() -> ! {
     }
 }
 
+#[panic_handler]
+fn panic(_info: &core::panic::PanicInfo) -> ! {
+    use core::arch::asm;
+    loop {
+        unsafe {
+            asm!("wfi");
+        }
+    }
+}
+
+
+
 //=================================
 // jump from start
 mod risc;
 mod start;
+mod proc;
 #[no_mangle]
 extern "C" fn kmain() {}
