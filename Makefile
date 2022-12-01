@@ -21,7 +21,8 @@ CFLAGS += -I. -fno-stack-protector -fno-pie -no-pie
 
 
 # Kernel build
-ASM=./src/asm/entry.S
+ASM=./src/asm/*.S 
+
 KERNEL_LIB=-lrxv6 -lgcc
 KERNEL_LIBS=./target/riscv64gc-unknown-none-elf/debug/
 KERNEL_LIB_OUT=./target/riscv64gc-unknown-none-elf/debug/libxv6.a

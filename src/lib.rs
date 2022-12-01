@@ -31,4 +31,10 @@ mod risc;
 mod start;
 mod proc;
 #[no_mangle]
-extern "C" fn kmain() {}
+extern "C" fn kmain() {
+    use core::arch::asm;
+    unsafe {
+        asm!("li a3,2"); // a helper flag
+        asm!("wfi");
+    }
+}
