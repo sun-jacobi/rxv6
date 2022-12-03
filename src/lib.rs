@@ -1,6 +1,8 @@
 #![no_std]
 #![feature(panic_info_message)]
 
+use crate::vm::kvm_init;
+
 
 
 #[no_mangle]
@@ -30,9 +32,12 @@ fn panic(_info: &core::panic::PanicInfo) -> ! {
 mod risc;
 mod start;
 mod proc;
+mod vm;
 #[no_mangle]
 extern "C" fn kmain() {
     use core::arch::asm;
+
+    kvm_init();
     unsafe {
         asm!("li a3,2"); // a helper flag
         asm!("wfi");

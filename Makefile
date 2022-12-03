@@ -29,13 +29,15 @@ KERNEL_LIB_OUT=./target/riscv64gc-unknown-none-elf/debug/libxv6.a
 KERNEL=kernel.elf
 LINKER_SCRIPT=./src/ld/kernel.ld
 
+LDFLAGS = -Wl,-z,max-page-size=4096
+
 
 $(KERNEL_LIB_OUT):
 	cargo build
 
 
 $(KERNEL) : $(KERNEL_LIB_OUT) $(ASM)
-	$(CC) $(CFLAGS) -T$(LINKER_SCRIPT) -o $(KERNEL) $(ASM) $(KERNEL_LIB) -L$(KERNEL_LIBS)
+	$(CC) $(CFLAGS) -T$(LINKER_SCRIPT) $(LDFLAGS) -o $(KERNEL) $(ASM) $(KERNEL_LIB) -L$(KERNEL_LIBS)
 
 
 #### 
