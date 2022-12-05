@@ -47,3 +47,13 @@ pub(crate) fn setup_sie() {
         register::sie::set_stimer();
     }
 }
+
+pub(crate) const PG_SIZE: usize = 4096;
+
+pub(crate) const MAXVA: usize = 1 << (9 + 9 + 9 + 12 - 1);
+
+pub(crate) const PTE_V: usize = 1 << 0; // valid
+pub(crate) const PTE_R: usize = 1 << 1;
+pub(crate) const PTE_W: usize = 1 << 2;
+pub(crate) const PTE_X: usize = 1 << 3;
+pub(crate) const PTE_Y: usize = 1 << 4; // user can access
