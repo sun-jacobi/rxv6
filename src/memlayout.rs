@@ -74,12 +74,19 @@ pub(crate) struct Addr(usize);
 
 use core::convert::From;
 use core::convert::Into;
-use core::ops::Add;
+use core::ops::{Add, Sub};
 
 impl Add<usize> for Addr {
     type Output = Self;
     fn add(self, rhs: usize) -> Self::Output {
         Addr(self.0 + rhs)
+    }
+}
+
+impl Sub<usize> for Addr {
+    type Output = Self;
+    fn sub(self, rhs: usize) -> Self::Output {
+        Addr(self.0 - rhs)
     }
 }
 
