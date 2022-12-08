@@ -5,7 +5,10 @@
 use crate::memlayout::{KERNBASE, PHYSTOP};
 use crate::risc::PG_SIZE;
 
-use crate::memlayout::Addr;
+use crate::address::Addr;
+
+use crate::memlayout::end; // first address after kernel.
+                           // defined by kernel.ld.
 
 const FREE_LIST_SIZE: usize = (PHYSTOP - KERNBASE) / PG_SIZE;
 
@@ -17,19 +20,11 @@ pub(crate) struct Kallocator {
 
 impl Kallocator {
     pub(crate) fn init() -> Self {
-        use core::arch::asm;
         let mut kallocator = Self {
             free_list: [0; FREE_LIST_SIZE],
             pivot: 0,
         };
-        let end = unsafe {
-            let x: usize;
-            asm!("la {}, end", out(reg)(x));
-            x
-        }; // first address after kernel.
-           // defined by kernel.ld.
-
-        kallocator.free_range(end.into(), PHYSTOP.into());
+        kallocator.free_range(unsafe { end }.into(), PHYSTOP.into());
         kallocator
     }
 
@@ -54,11 +49,8 @@ impl Kallocator {
     // Allocate one 4096-byte page of physical memory.
     // Returns a pointer that the kernel can use.
     // Returns 0 if the memory cannot be allocated.
-    pub(crate) fn kalloc(&mut self) -> Addr {
-        match self.pop_back() {
-            None => 0.into(),
-            Some(addr) => addr.into(),
-        }
+    pub(crate) fn kalloc(&mut self) -> Option<Addr> {
+        self.pop_back()
     }
 
     pub(crate) fn memset(base_addr: Addr, val: u8, sz: usize) {
@@ -71,11 +63,13 @@ impl Kallocator {
         }
     }
 
+    // append addr to the free list
     pub(crate) fn push_back(&mut self, addr: usize) {
         self.free_list[self.pivot] = addr;
         self.pivot += 1;
     }
 
+    // pop the last element in free list
     pub(crate) fn pop_back(&mut self) -> Option<Addr> {
         if self.pivot == 0 {
             return None;

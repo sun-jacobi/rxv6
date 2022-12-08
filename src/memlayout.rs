@@ -18,12 +18,11 @@
 // PHYSTOP -- end RAM used by the kernel
 
 // qemu puts UART registers here in physical memory.
-
-pub(crate) const UART0: usize = 0x10000000;
+pub(crate) const UART0: Addr = Addr(0x10000000);
 pub(crate) const UART0_IRQ: usize = 10;
 
 // virtio mmio interface
-pub(crate) const VIRTIO0: usize = 0x10001000;
+pub(crate) const VIRTIO0: Addr = Addr(0x10001000);
 pub(crate) const VIRTIO0_IRQ: usize = 1;
 
 // core local interruptor (CLINT), which contains the timer.
@@ -36,7 +35,7 @@ pub(crate) fn CLINT_MTIMECMP(hart_id: usize) -> usize {
 pub(crate) const CLINT_MTIME: usize = CLINT + 0xBFF8; // cycles since boot.
 
 // qemu puts platform-level interrupt controller (PLIC) here.
-pub(crate) const PLIC: usize = 0x0c000000;
+pub(crate) const PLIC: Addr = Addr(0x0c000000);
 
 // the kernel expects there to be RAM
 // for use by the kernel and user pages
@@ -69,45 +68,10 @@ pub(crate) fn KSTACK(p: usize) -> usize {
 
 pub(crate) const TRAPFRAME: usize = TRAMPOLINE - PG_SIZE;
 
-#[derive(PartialEq, Eq, PartialOrd, Ord, Clone, Copy)]
-pub(crate) struct Addr(usize);
-
-use core::convert::From;
-use core::convert::Into;
-use core::ops::{Add, Sub};
-
-impl Add<usize> for Addr {
-    type Output = Self;
-    fn add(self, rhs: usize) -> Self::Output {
-        Addr(self.0 + rhs)
-    }
+extern "C" {
+    pub(crate) static etext: usize; // first address after kernel.
+    pub(crate) static end: usize; // first address after code section.
+    pub(crate) static trampoline: usize;
 }
 
-impl Sub<usize> for Addr {
-    type Output = Self;
-    fn sub(self, rhs: usize) -> Self::Output {
-        Addr(self.0 - rhs)
-    }
-}
-
-impl From<usize> for Addr {
-    fn from(num: usize) -> Self {
-        Self(num)
-    }
-}
-
-impl Into<usize> for Addr {
-    fn into(self) -> usize {
-        self.0
-    }
-}
-
-impl Addr {
-    pub(crate) fn round_up_pg(self) -> Self {
-        Self((self.0 + 4095) & (!4096))
-    }
-
-    pub(crate) fn round_down_pg(self) -> Self {
-        Self((self.0) & (!4096))
-    }
-}
+use crate::address::Addr;

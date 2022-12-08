@@ -24,18 +24,18 @@ fn panic(_info: &core::panic::PanicInfo) -> ! {
 //=================================
 // jump from start
 
+#[no_mangle]
+extern "C" fn kmain() {
+    let _kvm = vm::KVM::new();
+    loop {}
+}
+
+//================================
+// mod imported
+mod address;
 mod kalloc;
 mod memlayout;
 mod proc;
 mod risc;
-mod spinlock;
 mod start;
 mod vm;
-#[no_mangle]
-extern "C" fn kmain() {
-    use core::arch::asm;
-    unsafe {
-        asm!("li a3,2"); // a helper flag
-        asm!("wfi");
-    }
-}
