@@ -11,10 +11,10 @@ SECTIONS
 
   .text : {
     *(.text .text.*)
-    . = ALIGN(0x1000);
+    . = ALIGN(4096);
     _trampoline = .;
     *(trampsec)
-    . = ALIGN(0x1000);
+    . = ALIGN(4096);
     ASSERT(. - _trampoline == 0x1000, "error: trampoline larger than one page");
     PROVIDE(etext = .);
   }
@@ -31,6 +31,11 @@ SECTIONS
     *(.sdata .sdata.*) /* do not need to distinguish this from .data */
     . = ALIGN(16);
     *(.data .data.*)
+    . = ALIGN(4096);
+    PROVIDE(stack_start = .); /* stack for cpus*/ 
+    . += 4096 * 4; 
+    . = ALIGN(4096);
+    PROVIDE(stack_end = .);
   }
 
   .bss : {
@@ -39,6 +44,6 @@ SECTIONS
     . = ALIGN(16);
     *(.bss .bss.*)
   }
-
-  PROVIDE(end = .); /* the first address after the kernel */
+  
+  PROVIDE(end = .);
 }

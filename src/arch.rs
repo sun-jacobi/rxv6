@@ -1,3 +1,9 @@
+use core::arch::asm;
+use riscv::register;
+
+pub(crate) const MAXVA: u64 = 1 << (9 + 9 + 9 + 12 - 1); // sv39
+pub(crate) const PGSIZE: u64 = 4096; // 4096 bytes;
+
 pub(crate) mod tp {
     pub(crate) fn write(bits: usize) {
         use core::arch::asm;
@@ -5,6 +11,15 @@ pub(crate) mod tp {
             asm!("mv tp, {}", in(reg) bits);
         }
     }
+}
+
+pub(crate) fn disable_vm() {
+    register::satp::write(0);
+}
+
+pub(crate) fn config_pm_protection() {
+    register::pmpaddr0::write(0x3fffffffffffff);
+    register::pmpcfg0::write(0xf);
 }
 
 pub(crate) fn setup_medeleg() {
@@ -40,7 +55,6 @@ pub(crate) fn setup_mideleg() {
 }
 
 pub(crate) fn setup_sie() {
-    use riscv::register;
     unsafe {
         register::sie::set_sext();
         register::sie::set_ssoft();
@@ -48,12 +62,18 @@ pub(crate) fn setup_sie() {
     }
 }
 
-pub(crate) const PG_SIZE: usize = 4096;
+pub(crate) fn mret() {
+    unsafe {
+        asm!("mret");
+    }
+}
 
-pub(crate) const MAXVA: usize = 1 << (9 + 9 + 9 + 12 - 1);
+pub(crate) const _PG_SIZE: usize = 4096;
 
-pub(crate) const PTE_V: usize = 1 << 0; // valid
-pub(crate) const PTE_R: usize = 1 << 1;
-pub(crate) const PTE_W: usize = 1 << 2;
-pub(crate) const PTE_X: usize = 1 << 3;
-pub(crate) const PTE_Y: usize = 1 << 4; // user can access
+pub(crate) const _MAXVA: usize = 1 << (9 + 9 + 9 + 12 - 1);
+
+pub(crate) const _PTE_V: usize = 1 << 0; // valid
+pub(crate) const _PTE_R: usize = 1 << 1;
+pub(crate) const _PTE_W: usize = 1 << 2;
+pub(crate) const _PTE_X: usize = 1 << 3;
+pub(crate) const _PTE_Y: usize = 1 << 4; // user can access
