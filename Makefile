@@ -1,5 +1,8 @@
 K=kernel
 
+
+GDB=riscv64-unknown-elf-gdb
+OBJDUMP=riscv64-unknown-elf-objdump
 ASM=./src/asm/*.S 
 KERNEL_SRC = $(wildcard src/**/*.rs)
 
@@ -28,6 +31,15 @@ QEMUOPTS += -monitor telnet::45454,server,nowait -serial mon:stdio
 
 qemu: $(KERNEL) $(DRIVE)
 	$(QEMU) $(QEMUOPTS)
+
+debug: $(KERNEL) $(DRIVE)
+	$(QEMU) $(QEMUOPTS) -s -S
+
+gdb:
+	$(GDB) -x debug.gdb
+
+dump: 
+	$(OBJDUMP) -d $(KERNEL)
 	
 ##### 
 .PHONY: clean

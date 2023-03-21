@@ -8,10 +8,6 @@ mod memory;
 
 //====================================
 use core::panic::PanicInfo;
-core::arch::global_asm!(include_str!("asm/entry.S"));
-core::arch::global_asm!(include_str!("asm/kernelvec.S"));
-core::arch::global_asm!(include_str!("asm/trampoline.S"));
-core::arch::global_asm!(include_str!("asm/switch.S"));
 
 #[panic_handler]
 fn panic(_panic: &PanicInfo<'_>) -> ! {
@@ -19,4 +15,11 @@ fn panic(_panic: &PanicInfo<'_>) -> ! {
 }
 
 #[no_mangle]
-extern "C" fn kmain() {}
+extern "C" fn kmain() {
+    let mut my_uart = driver::uart::Uart::new(0x1000_0000);
+
+    my_uart.init();
+
+    // Now test println! macro!
+    println!("This is my operating system!");
+}
