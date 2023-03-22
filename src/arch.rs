@@ -68,7 +68,7 @@ pub(crate) fn mret() {
     }
 }
 
-pub(crate) fn _wfi() {
+pub(crate) fn wfi() {
     unsafe {
         asm!("wfi");
     }
@@ -77,9 +77,3 @@ pub(crate) fn _wfi() {
 pub(crate) const _PG_SIZE: usize = 4096;
 
 pub(crate) const _MAXVA: usize = 1 << (9 + 9 + 9 + 12 - 1);
-
-pub(crate) const _PTE_V: usize = 1 << 0; // valid
-pub(crate) const _PTE_R: usize = 1 << 1;
-pub(crate) const _PTE_W: usize = 1 << 2;
-pub(crate) const _PTE_X: usize = 1 << 3;
-pub(crate) const _PTE_Y: usize = 1 << 4; // user can access

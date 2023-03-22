@@ -1,18 +1,24 @@
+// Physical memory allocator, for user processes,
+// kernel stacks, page-table pages,
+// and pipe buffers. Allocates whole 4096-byte pages.
+use super::layout::{END, PHYSTOP};
 use core::ptr::{read_volatile, write_volatile};
 
 const PGSIZE: usize = 4096;
 
 pub struct Kalloc {
-    head: Option<*mut Page>, // pointer to head
+    head: Option<*mut Page>,
 }
 
+pub static mut KALLOC: Kalloc = Kalloc::new();
+
 #[repr(C, align(4096))]
-#[derive(Clone, Copy)]
 pub struct Page {
     next: Option<*mut Page>,
 }
+
 impl Kalloc {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self { head: None }
     }
 
@@ -43,5 +49,10 @@ impl Kalloc {
         }
         self.head = Some(ptr);
     }
-}
 
+    pub fn init() {
+        unsafe {
+            KALLOC.insert(END, PHYSTOP);
+        }
+    }
+}
