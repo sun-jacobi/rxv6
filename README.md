@@ -1,7 +1,5 @@
-# RXV6 : A XV6-like OS In Rust
+### rxv6 : xv6 like OS in Rust [WIP]
 
-
-## Try it 
 
 ```
 make qemu
@@ -9,4 +7,8 @@ make qemu
 
 
 ### Roadmap
++ [ ] virtual memory
++ [ ] heap allocation
++ [ ] process 
+...
 
