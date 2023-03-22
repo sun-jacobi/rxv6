@@ -45,5 +45,6 @@ SECTIONS
     *(.bss .bss.*)
   }
   
-  PROVIDE(end = .);
+  . = ALIGN(4096);
+  PROVIDE(END = .);
 }

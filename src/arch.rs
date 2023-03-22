@@ -68,6 +68,12 @@ pub(crate) fn mret() {
     }
 }
 
+pub(crate) fn _wfi() {
+    unsafe {
+        asm!("wfi");
+    }
+}
+
 pub(crate) const _PG_SIZE: usize = 4096;
 
 pub(crate) const _MAXVA: usize = 1 << (9 + 9 + 9 + 12 - 1);
