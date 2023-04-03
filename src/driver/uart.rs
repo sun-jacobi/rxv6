@@ -5,6 +5,8 @@ use core::convert::TryInto;
 use core::fmt::Error;
 use core::fmt::Write;
 
+use crate::memory::layout::UART;
+
 /* This part of code is borrowed from
 https://github.com/sgmarz/osblog/blob/master/risc_v/src/uart.rs */
 
@@ -22,8 +24,10 @@ impl Write for Uart {
 }
 
 impl Uart {
-    pub fn new(base_address: usize) -> Self {
-        Uart { base_address }
+    pub fn new() -> Self {
+        Uart {
+            base_address: UART as usize,
+        }
     }
 
     pub fn init(&mut self) {
@@ -116,7 +120,7 @@ macro_rules! print
 {
 	($($args:tt)+) => ({
 			use core::fmt::Write;
-			let _ = write!(crate::driver::uart::Uart::new(0x1000_0000), $($args)+);
+			let _ = write!(crate::driver::uart::Uart::new(), $($args)+);
 			});
 }
 #[macro_export]

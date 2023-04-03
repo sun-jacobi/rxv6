@@ -40,6 +40,9 @@ gdb:
 
 dump: 
 	$(OBJDUMP) -d $(KERNEL)
+
+quit: 
+	telnet localhost 45454
 	
 ##### 
 .PHONY: clean

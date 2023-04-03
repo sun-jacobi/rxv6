@@ -9,10 +9,10 @@ _entry:
         # stack0 is declared in start.c,
         # with a 4096-byte stack per CPU.  
         la sp, stack_start
-        li a0, 4096
+        li a0, 2097152
         csrr a1, mhartid
         addi a1, a1, 1 
-        mul a0, a0, a1 # sp = stack0 + (hartid + 1) * 4096
+        mul a0, a0, a1 # sp = stack0 + (hartid + 1) * 16384
         add sp, sp, a0 # the top of each stack
         call start # jump to start() in start.c
 spin:

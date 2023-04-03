@@ -33,7 +33,7 @@ SECTIONS
     *(.data .data.*)
     . = ALIGN(4096);
     PROVIDE(stack_start = .); /* stack for cpus*/ 
-    . += 4096 * 4; 
+    . += 1024*1024*2; 
     . = ALIGN(4096);
     PROVIDE(stack_end = .);
   }
@@ -46,5 +46,5 @@ SECTIONS
   }
   
   . = ALIGN(4096);
-  PROVIDE(END = .);
+  PROVIDE(end = .);
 }

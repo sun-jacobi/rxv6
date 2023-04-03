@@ -5,14 +5,15 @@ pub(crate) const MAXVA: u64 = 1 << (9 + 9 + 9 + 12 - 1); // sv39
 pub(crate) const PGSIZE: u64 = 4096; // 4096 bytes;
 
 pub(crate) mod tp {
+    #[inline]
     pub(crate) fn write(bits: usize) {
-        use core::arch::asm;
         unsafe {
-            asm!("mv tp, {}", in(reg) bits);
+            core::arch::asm!("mv tp, {}", in(reg) bits);
         }
     }
 }
 
+#[inline]
 pub(crate) fn disable_vm() {
     register::satp::write(0);
 }
@@ -22,6 +23,7 @@ pub(crate) fn config_pm_protection() {
     register::pmpcfg0::write(0xf);
 }
 
+#[inline]
 pub(crate) fn setup_medeleg() {
     use riscv::register::medeleg::*;
     unsafe {
@@ -42,6 +44,7 @@ pub(crate) fn setup_medeleg() {
     }
 }
 
+#[inline]
 pub(crate) fn setup_mideleg() {
     use riscv::register::mideleg::*;
     unsafe {
@@ -54,6 +57,7 @@ pub(crate) fn setup_mideleg() {
     }
 }
 
+#[inline]
 pub(crate) fn setup_sie() {
     unsafe {
         register::sie::set_sext();
@@ -62,18 +66,9 @@ pub(crate) fn setup_sie() {
     }
 }
 
+#[inline]
 pub(crate) fn mret() {
     unsafe {
         asm!("mret");
     }
 }
-
-pub(crate) fn wfi() {
-    unsafe {
-        asm!("wfi");
-    }
-}
-
-pub(crate) const _PG_SIZE: usize = 4096;
-
-pub(crate) const _MAXVA: usize = 1 << (9 + 9 + 9 + 12 - 1);
