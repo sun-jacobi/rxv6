@@ -9,7 +9,6 @@ pub struct Kalloc {
     head: Option<*mut Page>,
 }
 
-pub static mut KALLOC: Kalloc = Kalloc::new();
 
 #[repr(C, align(4096))]
 pub struct Page {
@@ -59,13 +58,8 @@ impl Kalloc {
         }
     }
 
-    pub fn init() {
-        unsafe {
-            KALLOC.insert(END + PGSIZE as u64, PHYSTOP);
-        }
-    }
 
-    pub fn test() {
+    pub fn _test() {
         static mut POOL: [u8; PGSIZE * 2] = [0; PGSIZE * 2];
         let start = unsafe { POOL.as_mut_ptr() as u64 };
         let end = start + (PGSIZE as u64) * 2;

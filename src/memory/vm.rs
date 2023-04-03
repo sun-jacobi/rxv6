@@ -1,7 +1,7 @@
 use core::{panic, slice};
 
 use crate::arch::PGSIZE;
-use crate::{print, println};
+use crate::memory::layout::{TRAMPOLINE, TRAPTEXT};
 
 use super::kalloc::Kalloc;
 use super::layout::{ETEXT, KERNBASE, PHYSTOP, UART, VIRTIO0};
@@ -65,17 +65,21 @@ impl Kvm {
         }
         unsafe {
             // uart register
-            kvm.map(UART, UART, PTE_R | PTE_W, kalloc);
+            kvm.map(UART, UART, PGSIZE, PTE_R | PTE_W, kalloc);
             assert_eq!(kvm.translate(UART), UART);
             // virtio mmio disk interface
-            kvm.map(VIRTIO0, VIRTIO0, PTE_R | PTE_W, kalloc);
+            kvm.map(VIRTIO0, VIRTIO0, PGSIZE, PTE_R | PTE_W, kalloc);
             assert_eq!(kvm.translate(VIRTIO0), VIRTIO0);
             // map kernel text excutable and read-only
-            kvm.map_range(KERNBASE, KERNBASE, ETEXT - KERNBASE, PTE_R | PTE_X, kalloc);
+            kvm.map(KERNBASE, KERNBASE, ETEXT - KERNBASE, PTE_R | PTE_X, kalloc);
             assert_eq!(kvm.translate(KERNBASE), KERNBASE);
             // map kernel data and the physical RAM we'll make use of.
-            kvm.map_range(ETEXT, ETEXT, PHYSTOP - ETEXT, PTE_R | PTE_W, kalloc);
+            kvm.map(ETEXT, ETEXT, PHYSTOP - ETEXT, PTE_R | PTE_W, kalloc);
             assert_eq!(kvm.translate(ETEXT), ETEXT);
+
+            kvm.map(TRAMPOLINE, TRAPTEXT, PGSIZE,PTE_R | PTE_X , kalloc);
+            // assert_eq!(kvm.translate(TRAMPOLINE), TRAPTEXT);
+        
         }
     }
 
@@ -95,10 +99,10 @@ impl Kvm {
 impl PageTable {
     // map[virt_addr..virt_addr + range]
     // -> [phys_addr..phys_addr + range]
-    pub fn map_range(
+    pub fn map(
         &mut self,
-        phys_addr: u64,
         virt_addr: u64,
+        phys_addr: u64,
         range: u64,
         perm: u64,
         kalloc: &mut Kalloc,
@@ -108,13 +112,13 @@ impl PageTable {
         let mut virt = virt_addr;
         let end = phys_addr + range;
         while phys < end {
-            self.map(phys, virt, perm, kalloc);
+            self.map_page(virt, phys, perm, kalloc);
             phys += PGSIZE;
             virt += PGSIZE;
         }
     }
 
-    pub fn map(&mut self, phys_addr: u64, virt_addr: u64, perm: u64, kalloc: &mut Kalloc) {
+    pub fn map_page(&mut self, virt_addr: u64, phys_addr: u64, perm: u64, kalloc: &mut Kalloc) {
         // level 1
         let lv1_ptes = &mut self.ptes;
         let lv1_idx = Self::idx(virt_addr, PageTableLevel::Lv1);

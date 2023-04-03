@@ -45,18 +45,21 @@ pub const TRAMPOLINE: u64 = MAXVA - PGSIZE;
 //   ...
 //   TRAPFRAME (p->trapframe, used by the trampoline)
 //   TRAMPOLINE (the same page as in the kernel)
-pub const TRAPFRAME: u64 = TRAMPOLINE - PGSIZE;
+pub const _TRAPFRAME: u64 = TRAMPOLINE - PGSIZE;
 
-// the first address after the kernel
+
 extern "C" {
-    static mut end: u64;
-    static mut etext: u64;
+    static mut end: u64; // the first address after the kernel
+    static mut etext: u64; // kernel code
+    static mut trampoline : u64; // trap code 
 }
 
 pub unsafe fn init_linker_variable() {
     END = (&end as *const u64) as u64;
     ETEXT = (&etext as *const u64) as u64;
+    TRAPTEXT = (&trampoline as *const u64) as u64;
 }
 
 pub static mut END: u64 = 0;
 pub static mut ETEXT: u64 = 0;
+pub static mut TRAPTEXT : u64 = 0;
