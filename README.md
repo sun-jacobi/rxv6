@@ -1,14 +1,28 @@
-### rxv6 : xv6 like OS in Rust [WIP]
+### rxv6 : a xv6 like OS in Rust [WIP]
 
+
+## Roadmap
++ [x] virtual memory
++ [ ] trap
++ [ ] process 
+...
+
+
+## Note (in japanese)
+[OSを作るための落書き](https://zenn.dev/chiask/articles/00d91c33e0b241)
+
+
+## Usage
 
 ```
 make qemu
 ```
 
+### Debug
+```
+make debug 
+make gdb
+```
 
-### Roadmap
-+ [ ] virtual memory
-+ [ ] heap allocation
-+ [ ] process 
-...
+
 
