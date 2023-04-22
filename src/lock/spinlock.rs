@@ -13,7 +13,7 @@ pub(crate) struct SpinLock<T> {
 unsafe impl<T> Sync for SpinLock<T> where T: Send {}
 
 impl<T> SpinLock<T> {
-    pub(crate) fn new(data: T) -> Self {
+    pub(crate) const fn new(data: T) -> Self {
         Self {
             locked: AtomicBool::new(false),
             data: UnsafeCell::new(data),

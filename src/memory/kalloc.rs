@@ -1,3 +1,5 @@
+use crate::lock::spinlock::SpinLock;
+
 // Physical memory allocator, for user processes,
 // kernel stacks, page-table pages,
 // and pipe buffers. Allocates whole 4096-byte pages.
@@ -5,9 +7,13 @@ use super::layout::{END, PHYSTOP};
 
 const PGSIZE: usize = 4096;
 
+pub(crate) static KALLOC: SpinLock<Kalloc> = SpinLock::new(Kalloc::new());
+
 pub struct Kalloc {
     head: Option<*mut Page>,
 }
+
+unsafe impl Send for Kalloc {}
 
 #[repr(C, align(4096))]
 pub struct Page {
@@ -19,11 +25,10 @@ impl Kalloc {
         Self { head: None }
     }
 
-    pub fn kinit(mut self) -> Self {
+    pub fn kinit() {
         unsafe {
-            self.insert(END, PHYSTOP);
+            KALLOC.lock().insert(END, PHYSTOP);
         }
-        self
     }
 
     // free a allocated page

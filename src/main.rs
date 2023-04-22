@@ -23,12 +23,11 @@ fn panic(panic: &PanicInfo<'_>) -> ! {
     println!("{}", panic);
     loop {}
 }
-
 //====================================
 #[no_mangle]
 extern "C" fn kmain() {
-    let mut kalloc = Kalloc::new().kinit(); // init the kernel page allocator
-    Kvm::init(&mut kalloc); // init the kernel page table
+    Kalloc::kinit(); // init the kernel page allocator
+    Kvm::init(); // init the kernel page table
     Kvm::init_hart(); // turn on paging hardware
     let mut uart = driver::uart::Uart::new();
     uart.init();

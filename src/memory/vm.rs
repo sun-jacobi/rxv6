@@ -1,10 +1,9 @@
 use core::{panic, slice};
 
-use crate::arch::PGSIZE;
-use crate::memory::layout::{PLIC, TRAMPOLINE, TRAPTEXT};
-
-use super::kalloc::Kalloc;
 use super::layout::{ETEXT, KERNBASE, PHYSTOP, UART, VIRTIO0};
+use crate::arch::PGSIZE;
+use crate::lock::spinlock::SpinLock;
+use crate::memory::layout::{PLIC, TRAMPOLINE, TRAPTEXT};
 use riscv::asm::sfence_vma_all;
 use riscv::register::satp;
 use riscv::register::satp::Mode;
@@ -35,7 +34,7 @@ pub const PTE_W: u64 = 1 << 2; // writable
 pub const PTE_X: u64 = 1 << 3; // executable
 pub const _PTE_U: u64 = 1 << 4; // user can access
 
-static mut KVM: Kvm = Kvm::new();
+static KVM: SpinLock<Kvm> = SpinLock::new(Kvm::new());
 
 // The risc-v Sv39 scheme has three levels of page-table
 // pages. A page-table page contains 512 64-bit PTEs.
@@ -58,46 +57,45 @@ impl Kvm {
     }
 
     // init the kernel map
-    pub fn init(kalloc: &mut Kalloc) {
-        let mut kvm = PageTable::create_table(kalloc);
-        unsafe {
-            KVM.root = kvm.base_addr();
-        }
+    pub fn init() {
+        let mut kvm = PageTable::create_table();
+        KVM.lock().root = kvm.base_addr();
         unsafe {
             // uart register
-            kvm.map(UART, UART, PGSIZE, PTE_R | PTE_W, kalloc);
+            kvm.map(UART, UART, PGSIZE, PTE_R | PTE_W);
             assert_eq!(kvm.translate(UART), UART);
 
             // PLIC
-            kvm.map(PLIC, PLIC, 0x400000, PTE_R | PTE_W, kalloc);
+            kvm.map(PLIC, PLIC, 0x400000, PTE_R | PTE_W);
             assert_eq!(kvm.translate(PLIC), PLIC);
 
             // virtio mmio disk interface
-            kvm.map(VIRTIO0, VIRTIO0, PGSIZE, PTE_R | PTE_W, kalloc);
+            kvm.map(VIRTIO0, VIRTIO0, PGSIZE, PTE_R | PTE_W);
             assert_eq!(kvm.translate(VIRTIO0), VIRTIO0);
 
             // map kernel text excutable and read-only
-            kvm.map(KERNBASE, KERNBASE, ETEXT - KERNBASE, PTE_R | PTE_X, kalloc);
+            kvm.map(KERNBASE, KERNBASE, ETEXT - KERNBASE, PTE_R | PTE_X);
 
             assert_eq!(kvm.translate(KERNBASE), KERNBASE);
 
             // map kernel data and the physical RAM we'll make use of.
-            kvm.map(ETEXT, ETEXT, PHYSTOP - ETEXT, PTE_R | PTE_W, kalloc);
+            kvm.map(ETEXT, ETEXT, PHYSTOP - ETEXT, PTE_R | PTE_W);
             assert_eq!(kvm.translate(ETEXT), ETEXT);
 
             // map the trampoline for trap entry/exit to
             // the highest virtual address in the kernel.
-            kvm.map(TRAMPOLINE, TRAPTEXT, PGSIZE, PTE_R | PTE_X, kalloc);
+            kvm.map(TRAMPOLINE, TRAPTEXT, PGSIZE, PTE_R | PTE_X);
             assert_eq!(kvm.translate(TRAMPOLINE), TRAPTEXT);
         }
     }
 
     // turn on the mmu hardware
     pub fn init_hart() {
+        let ppn = { (KVM.lock().root >> 12) as usize };
         unsafe {
             // wait for any previous writes to the page table memory to finish.
             sfence_vma_all();
-            satp::set(Mode::Sv39, 0, (KVM.root >> 12) as usize);
+            satp::set(Mode::Sv39, 0, ppn);
             // flush stale entries from the TLB.
             sfence_vma_all();
         }
@@ -107,26 +105,19 @@ impl Kvm {
 impl PageTable {
     // map[virt_addr..virt_addr + range]
     // -> [phys_addr..phys_addr + range]
-    pub fn map(
-        &mut self,
-        virt_addr: u64,
-        phys_addr: u64,
-        range: u64,
-        perm: u64,
-        kalloc: &mut Kalloc,
-    ) {
+    pub fn map(&mut self, virt_addr: u64, phys_addr: u64, range: u64, perm: u64) {
         assert_eq!(range & (4096 - 1), 0); // range must be 4096-aligned
         let mut phys = phys_addr;
         let mut virt = virt_addr;
         let end = phys_addr + range;
         while phys < end {
-            self.map_page(virt, phys, perm, kalloc);
+            self.map_page(virt, phys, perm);
             phys += PGSIZE;
             virt += PGSIZE;
         }
     }
 
-    pub fn map_page(&mut self, virt_addr: u64, phys_addr: u64, perm: u64, kalloc: &mut Kalloc) {
+    pub fn map_page(&mut self, virt_addr: u64, phys_addr: u64, perm: u64) {
         // level 1
         let lv1_ptes = &mut self.ptes;
         let lv1_idx = Self::idx(virt_addr, PageTableLevel::Lv1);
@@ -135,7 +126,7 @@ impl PageTable {
             PageTable::from_pte(lv1_pte)
         } else {
             // allocate a new page for table
-            PageTable::create_table(kalloc)
+            PageTable::create_table()
         };
         lv1_ptes[lv1_idx] = lv2_tbl.to_pte() | PTE_V;
 
@@ -147,7 +138,7 @@ impl PageTable {
         let mut lv3_tbl = if Self::used(lv2_pte) {
             PageTable::from_pte(lv2_pte)
         } else {
-            PageTable::create_table(kalloc)
+            PageTable::create_table()
         };
         lv2_tbl.ptes[lv2_idx] = lv3_tbl.to_pte() | PTE_V;
 
@@ -213,8 +204,9 @@ impl PageTable {
         (addr >> 12) << 10
     }
 
-    pub fn create_table(kalloc: &mut Kalloc) -> Self {
-        let addr = if let Some(page) = kalloc.alloc() {
+    pub fn create_table() -> Self {
+        use crate::memory::kalloc::KALLOC;
+        let addr = if let Some(page) = KALLOC.lock().alloc() {
             page
         } else {
             panic!("failed to create page table");
