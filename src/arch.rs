@@ -1,8 +1,12 @@
-use core::arch::asm;
+use core::{arch::asm, ptr::{read_volatile, write_volatile}};
 use riscv::register;
+
+use crate::memory::layout::{CLINT, CLINT_MTIME, PLIC};
 
 pub(crate) const MAXVA: u64 = 1 << (9 + 9 + 9 + 12 - 1); // sv39
 pub(crate) const PGSIZE: u64 = 4096; // 4096 bytes;
+pub(crate) const NCPU: usize = 1; // number of cpus
+pub(crate) const INTERVAL: u64 = 1000000; // about 1/10th second in qemu.
 
 pub(crate) mod tp {
     #[inline]
@@ -66,9 +70,43 @@ pub(crate) fn setup_sie() {
     }
 }
 
+// scratch[0..2] : space for timervec to save registers.
+// scratch[3] : address of CLINT MTIMECMP register.
+// scratch[4] : desired interval (in cycles) between timer interrupts.
+pub(crate) unsafe fn setup_mscratch() {
+    use crate::memory::layout::SCRATCH;
+    // each CPU has a separate source of timer interrupts.
+    let id = register::mhartid::read();
+    // ask the CLINT for a timer interrupt.
+    let mtimecmp_val = unsafe { get_clint_mtime() + INTERVAL };
+    let mtimecmp_addr = get_mtimecmp_addr(id);
+    write_volatile(mtimecmp_addr as *mut u64, mtimecmp_val);
+    SCRATCH[id][3] = mtimecmp_addr;
+    SCRATCH[id][4] = INTERVAL;
+    register::mscratch::write(SCRATCH[id].as_ptr() as usize);
+}
+
+#[inline]
+unsafe fn get_clint_mtime() -> u64 {
+    let ptr = CLINT_MTIME as *const u64;
+    read_volatile(ptr)
+}
+
+#[inline]
+fn get_mtimecmp_addr(cpu_id: usize) -> u64 {
+    CLINT + 0x4000 + 8 * cpu_id as u64
+}
+
 #[inline]
 pub(crate) fn mret() {
     unsafe {
         asm!("mret");
     }
+}
+
+
+pub(crate) fn set_plic_spriority() {
+    let id = register::mhartid::read() as u64;
+    let plic_spriority = PLIC + 0x201000 + 0x2000 * id;
+    unsafe { write_volatile(plic_spriority as *mut u64, 0); } 
 }

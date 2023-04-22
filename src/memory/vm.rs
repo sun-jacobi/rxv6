@@ -77,9 +77,8 @@ impl Kvm {
             kvm.map(ETEXT, ETEXT, PHYSTOP - ETEXT, PTE_R | PTE_W, kalloc);
             assert_eq!(kvm.translate(ETEXT), ETEXT);
 
-            kvm.map(TRAMPOLINE, TRAPTEXT, PGSIZE,PTE_R | PTE_X , kalloc);
+            kvm.map(TRAMPOLINE, TRAPTEXT, PGSIZE, PTE_R | PTE_X, kalloc);
             // assert_eq!(kvm.translate(TRAMPOLINE), TRAPTEXT);
-        
         }
     }
 

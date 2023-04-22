@@ -1,4 +1,4 @@
-use crate::arch::{MAXVA, PGSIZE};
+use crate::arch::{MAXVA, NCPU, PGSIZE};
 // Physical memory layout
 
 // qemu -machine virt is set up like this,
@@ -26,6 +26,14 @@ pub const _UART0_IRQ: u64 = 10;
 pub const VIRTIO0: u64 = 0x10001000;
 pub const _VIRTIO0_IRQ: u64 = 1;
 
+// core local interruptor (CLINT), which contains the timer.
+pub const CLINT: u64 = 0x2000000;
+pub const CLINT_MTIME: u64 = CLINT + 0xBFF8; // cycles since boot.
+
+// qemu puts platform-level interrupt controller (PLIC) here.
+pub const PLIC : u64 = 0x0c000000;
+
+
 // the kernel expects there to be RAM
 // for use by the kernel and user pages
 // from physical address 0x80000000 to PHYSTOP.
@@ -35,6 +43,9 @@ pub const PHYSTOP: u64 = KERNBASE + 128 * 1024 * 1024;
 // map the trampoline page to the highest address,
 // in both user and kernel space.
 pub const TRAMPOLINE: u64 = MAXVA - PGSIZE;
+
+// a scratch area per CPU for machine-mode timer interrupts.
+pub static mut SCRATCH: [[u64; 5]; NCPU] = [[0; 5]; NCPU];
 
 // User memory layout.
 // Address zero first:
@@ -47,19 +58,24 @@ pub const TRAMPOLINE: u64 = MAXVA - PGSIZE;
 //   TRAMPOLINE (the same page as in the kernel)
 pub const _TRAPFRAME: u64 = TRAMPOLINE - PGSIZE;
 
-
 extern "C" {
     static mut end: u64; // the first address after the kernel
     static mut etext: u64; // kernel code
-    static mut trampoline : u64; // trap code 
+    static mut trampoline: u64; // trap code position
+    static mut timervec: u64; // machine-mode timer interrupt code
+    static mut kernelvec: u64; // kernel trap code
 }
 
 pub unsafe fn init_linker_variable() {
     END = (&end as *const u64) as u64;
     ETEXT = (&etext as *const u64) as u64;
     TRAPTEXT = (&trampoline as *const u64) as u64;
+    TIMERVEC = (&timervec as *const u64) as u64;
+    KERNELVEC = (&kernelvec as *const u64) as u64;
 }
 
 pub static mut END: u64 = 0;
 pub static mut ETEXT: u64 = 0;
-pub static mut TRAPTEXT : u64 = 0;
+pub static mut TRAPTEXT: u64 = 0;
+pub static mut TIMERVEC: u64 = 0;
+pub static mut KERNELVEC: u64 = 0;

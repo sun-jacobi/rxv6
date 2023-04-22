@@ -9,7 +9,6 @@ pub struct Kalloc {
     head: Option<*mut Page>,
 }
 
-
 #[repr(C, align(4096))]
 pub struct Page {
     next: Option<*mut Page>,
@@ -27,6 +26,7 @@ impl Kalloc {
         self
     }
 
+    // free a allocated page
     pub fn insert(&mut self, start: u64, end: u64) {
         let mut page = start;
         while page < end {
@@ -58,7 +58,7 @@ impl Kalloc {
         }
     }
 
-
+    // mock test for page allocator
     pub fn _test() {
         static mut POOL: [u8; PGSIZE * 2] = [0; PGSIZE * 2];
         let start = unsafe { POOL.as_mut_ptr() as u64 };
