@@ -95,10 +95,9 @@ impl Kvm {
     // turn on the mmu hardware
     pub fn init_hart() {
         unsafe {
-            let ppn = (KVM.root >> 12) as usize;
             // wait for any previous writes to the page table memory to finish.
             sfence_vma_all();
-            satp::set(Mode::Sv39, 0, ppn);
+            satp::set(Mode::Sv39, 0, (KVM.root >> 12) as usize);
             // flush stale entries from the TLB.
             sfence_vma_all();
         }

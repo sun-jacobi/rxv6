@@ -4,6 +4,7 @@
 mod arch;
 mod boot;
 mod driver;
+mod lock;
 mod memory;
 
 use crate::{
