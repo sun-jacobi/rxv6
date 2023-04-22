@@ -114,3 +114,8 @@ pub(crate) fn set_plic_spriority() {
         write_volatile(plic_spriority as *mut u64, 0);
     }
 }
+
+#[inline]
+pub(crate) fn cpu_id() -> usize {
+    register::mhartid::read()
+}

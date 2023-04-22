@@ -8,13 +8,13 @@ mod lock;
 mod memory;
 
 use crate::{
-    arch::set_plic_spriority,
+    arch::{cpu_id, set_plic_spriority},
     memory::{
         layout::{self, KERNELVEC},
         vm::Kvm,
     },
 };
-use core::{arch::asm, panic::PanicInfo};
+use core::{panic::PanicInfo, hint::spin_loop};
 use memory::kalloc::Kalloc;
 use riscv::register::utvec::TrapMode;
 //====================================
@@ -26,23 +26,25 @@ fn panic(panic: &PanicInfo<'_>) -> ! {
 //====================================
 #[no_mangle]
 extern "C" fn kmain() {
-    Kalloc::kinit(); // init the kernel page allocator
-    Kvm::init(); // init the kernel page table
-    Kvm::init_hart(); // turn on paging hardware
-    let mut uart = driver::uart::Uart::new();
-    uart.init();
-    print!("\x1B[2J\x1B[1;1H");
-    println!("RXV6: An Eduacationol OS In Rust");
-    println!("{}", LOGO);
-    println!("Page Table Done.");
-    unsafe {
-        riscv::register::stvec::write(KERNELVEC as usize, TrapMode::Direct);
-        set_plic_spriority();
-    }
-    loop {
+    if cpu_id() == 0 {
+        Kalloc::kinit(); // init the kernel page allocator
+        Kvm::init(); // init the kernel page table
+        Kvm::init_hart(); // turn on paging hardware
+        let mut uart = driver::uart::Uart::new();
+        uart.init();
+        print!("\x1B[2J\x1B[1;1H");
+        println!("RXV6: An Eduacationol OS In Rust");
+        println!("{}", LOGO);
+        println!("Page Table Done.");
         unsafe {
-            asm!("wfi");
+            riscv::register::stvec::write(KERNELVEC as usize, TrapMode::Direct);
+            set_plic_spriority();
         }
+        loop {
+            spin_loop();
+        }
+    } else {
+        spin_loop();
     }
 }
 
