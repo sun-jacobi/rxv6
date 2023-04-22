@@ -31,8 +31,7 @@ pub const CLINT: u64 = 0x2000000;
 pub const CLINT_MTIME: u64 = CLINT + 0xBFF8; // cycles since boot.
 
 // qemu puts platform-level interrupt controller (PLIC) here.
-pub const PLIC : u64 = 0x0c000000;
-
+pub const PLIC: u64 = 0x0c000000;
 
 // the kernel expects there to be RAM
 // for use by the kernel and user pages

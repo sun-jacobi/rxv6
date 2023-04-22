@@ -1,6 +1,8 @@
 //=================================
 // jump from entry.S
 
+use core::arch::asm;
+
 use crate::arch::{
     config_pm_protection, disable_vm, mret, setup_medeleg, setup_mideleg, setup_mscratch,
     setup_sie, tp,
@@ -54,7 +56,6 @@ extern "C" fn start() {
 // which turns them into software interrupts for
 // devintr() in trap.c.
 unsafe fn timer_init() {
-
     // prepare information in scratch[] for timervec.
     setup_mscratch();
 
@@ -63,12 +64,17 @@ unsafe fn timer_init() {
 
     // enable machine-mode interrupts.
     register::mstatus::set_mie();
-    
+
     // enable machine-mode timer interrupts.
     register::mie::set_mtimer();
 }
 
 #[no_mangle]
 extern "C" fn kerneltrap() {
-    println!("timer interrupt!");  
+    println!("Timer Interrupt Done");
+    loop {
+        unsafe {
+            asm!("wfi");
+        }
+    }
 }

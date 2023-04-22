@@ -6,11 +6,14 @@ mod boot;
 mod driver;
 mod memory;
 
-use crate::{memory::{
-    layout::{self, KERNELVEC},
-    vm::Kvm,
-}, arch::set_plic_spriority};
-use core::{panic::PanicInfo, arch::asm};
+use crate::{
+    arch::set_plic_spriority,
+    memory::{
+        layout::{self, KERNELVEC},
+        vm::Kvm,
+    },
+};
+use core::{arch::asm, panic::PanicInfo};
 use memory::kalloc::Kalloc;
 use riscv::register::utvec::TrapMode;
 //====================================
@@ -29,15 +32,17 @@ extern "C" fn kmain() {
     let mut uart = driver::uart::Uart::new();
     uart.init();
     print!("\x1B[2J\x1B[1;1H");
-    println!("rxv6: An Eduacationol OS In Rust");
+    println!("RXV6: An Eduacationol OS In Rust");
     println!("{}", LOGO);
-    println!("Page table done.");
+    println!("Page Table Done.");
     unsafe {
         riscv::register::stvec::write(KERNELVEC as usize, TrapMode::Direct);
         set_plic_spriority();
     }
     loop {
-        unsafe { asm!("wfi"); }
+        unsafe {
+            asm!("wfi");
+        }
     }
 }
 

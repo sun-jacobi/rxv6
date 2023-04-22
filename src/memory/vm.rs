@@ -1,7 +1,7 @@
 use core::{panic, slice};
 
 use crate::arch::PGSIZE;
-use crate::memory::layout::{TRAMPOLINE, TRAPTEXT};
+use crate::memory::layout::{PLIC, TRAMPOLINE, TRAPTEXT};
 
 use super::kalloc::Kalloc;
 use super::layout::{ETEXT, KERNBASE, PHYSTOP, UART, VIRTIO0};
@@ -67,18 +67,28 @@ impl Kvm {
             // uart register
             kvm.map(UART, UART, PGSIZE, PTE_R | PTE_W, kalloc);
             assert_eq!(kvm.translate(UART), UART);
+
+            // PLIC
+            kvm.map(PLIC, PLIC, 0x400000, PTE_R | PTE_W, kalloc);
+            assert_eq!(kvm.translate(PLIC), PLIC);
+
             // virtio mmio disk interface
             kvm.map(VIRTIO0, VIRTIO0, PGSIZE, PTE_R | PTE_W, kalloc);
             assert_eq!(kvm.translate(VIRTIO0), VIRTIO0);
+
             // map kernel text excutable and read-only
             kvm.map(KERNBASE, KERNBASE, ETEXT - KERNBASE, PTE_R | PTE_X, kalloc);
+
             assert_eq!(kvm.translate(KERNBASE), KERNBASE);
+
             // map kernel data and the physical RAM we'll make use of.
             kvm.map(ETEXT, ETEXT, PHYSTOP - ETEXT, PTE_R | PTE_W, kalloc);
             assert_eq!(kvm.translate(ETEXT), ETEXT);
 
+            // map the trampoline for trap entry/exit to
+            // the highest virtual address in the kernel.
             kvm.map(TRAMPOLINE, TRAPTEXT, PGSIZE, PTE_R | PTE_X, kalloc);
-            // assert_eq!(kvm.translate(TRAMPOLINE), TRAPTEXT);
+            assert_eq!(kvm.translate(TRAMPOLINE), TRAPTEXT);
         }
     }
 

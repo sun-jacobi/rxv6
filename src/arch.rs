@@ -1,4 +1,7 @@
-use core::{arch::asm, ptr::{read_volatile, write_volatile}};
+use core::{
+    arch::asm,
+    ptr::{read_volatile, write_volatile},
+};
 use riscv::register;
 
 use crate::memory::layout::{CLINT, CLINT_MTIME, PLIC};
@@ -104,9 +107,10 @@ pub(crate) fn mret() {
     }
 }
 
-
 pub(crate) fn set_plic_spriority() {
     let id = register::mhartid::read() as u64;
     let plic_spriority = PLIC + 0x201000 + 0x2000 * id;
-    unsafe { write_volatile(plic_spriority as *mut u64, 0); } 
+    unsafe {
+        write_volatile(plic_spriority as *mut u64, 0);
+    }
 }
