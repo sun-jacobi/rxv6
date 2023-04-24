@@ -44,7 +44,7 @@ extern "C" fn kmain() {
             spin_loop();
         }
     } else {
-        spin_loop();
+        spin_loop()
     }
 }
 

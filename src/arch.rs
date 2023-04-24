@@ -117,5 +117,7 @@ pub(crate) fn set_plic_spriority() {
 
 #[inline]
 pub(crate) fn cpu_id() -> usize {
-    register::mhartid::read()
+    let id : usize;
+    unsafe { asm!("mv {id}, tp", id = out(reg) id); } 
+    id
 }
