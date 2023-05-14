@@ -48,7 +48,7 @@ quit:
 .PHONY: clean
 clean:
 	cargo clean
-	rm fs.img
+	rm -f fs.img
 
 
 
