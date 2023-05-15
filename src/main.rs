@@ -48,7 +48,7 @@ extern "C" fn kmain() {
     }
 }
 
-pub static LOGO: &'static str = r"
+pub static LOGO: &str = r"
 ________     ___    ___ ___      ___ ________     
 |\   __  \   |\  \  /  /|\  \    /  /|\   ____\    
 \ \  \|\  \  \ \  \/  / | \  \  /  / | \  \___|    

@@ -43,14 +43,10 @@ impl Kalloc {
     // allocate a new page
     // caller should be responsible for clearing the page
     pub fn alloc(&mut self) -> Option<u64> {
-        let ptr = if let Some(ptr) = self.head {
-            ptr
-        } else {
-            return None;
-        };
+        let ptr = self.head?;
         let page = unsafe { ptr.as_mut().unwrap() };
         let _ = core::mem::replace(&mut self.head, page.next);
-        return Some(ptr as u64);
+        Some(ptr as u64)
     }
 
     // append to free list
@@ -70,7 +66,7 @@ impl Kalloc {
         let end = start + (PGSIZE as u64) * 2;
         let mut kalloc = Kalloc::new();
         kalloc.insert(start, end);
-        assert_eq!(kalloc.alloc().unwrap(), start + 1 * (PGSIZE as u64));
+        assert_eq!(kalloc.alloc().unwrap(), start + PGSIZE as u64);
         assert_eq!(kalloc.alloc().unwrap(), start);
         assert_eq!(kalloc.alloc(), None);
     }

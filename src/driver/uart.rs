@@ -120,7 +120,7 @@ macro_rules! print
 {
 	($($args:tt)+) => ({
 			use core::fmt::Write;
-			let _ = write!(crate::driver::uart::Uart::new(), $($args)+);
+			let _ = write!($crate::driver::uart::Uart::new(), $($args)+);
 			});
 }
 #[macro_export]
