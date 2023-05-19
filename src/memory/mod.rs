@@ -1,3 +1,3 @@
-pub mod kalloc;
-pub mod layout;
-pub mod vm;
+pub(crate) mod kalloc;
+pub(crate) mod layout;
+pub(crate) mod vm;

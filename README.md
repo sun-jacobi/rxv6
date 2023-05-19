@@ -3,8 +3,10 @@
 
 ## Roadmap
 + [x] virtual memory
++ [x] timer interrup
++ [ ] allocator
 + [ ] trap
-+ [ ] process 
++ [ ] process
 ...
 
 

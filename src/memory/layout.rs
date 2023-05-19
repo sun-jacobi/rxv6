@@ -20,11 +20,11 @@ use crate::arch::{MAXVA, NCPU, PGSIZE};
 
 // qemu puts UART registers here in physical memory.
 pub const UART: u64 = 0x10000000;
-pub const _UART0_IRQ: u64 = 10;
+pub const UART0_IRQ: u64 = 10;
 
 // virtio mmio interface
 pub const VIRTIO0: u64 = 0x10001000;
-pub const _VIRTIO0_IRQ: u64 = 1;
+pub const VIRTIO0_IRQ: u64 = 1;
 
 // core local interruptor (CLINT), which contains the timer.
 pub const CLINT: u64 = 0x2000000;
@@ -42,6 +42,13 @@ pub const PHYSTOP: u64 = KERNBASE + 128 * 1024 * 1024;
 // map the trampoline page to the highest address,
 // in both user and kernel space.
 pub const TRAMPOLINE: u64 = MAXVA - PGSIZE;
+
+// map kernel stacks beneath the trampoline,
+// each surrounded by invalid guard pages.
+#[inline]
+pub fn kstack(pid: usize) -> u64 {
+    TRAMPOLINE - PGSIZE * 2 * (pid + 1) as u64
+}
 
 // a scratch area per CPU for machine-mode timer interrupts.
 pub static mut SCRATCH: [[u64; 5]; NCPU] = [[0; 5]; NCPU];

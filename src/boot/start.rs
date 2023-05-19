@@ -1,15 +1,13 @@
 //=================================
 // jump from entry.S
 
-use core::arch::asm;
-
 use crate::arch::{
     config_pm_protection, disable_vm, mret, setup_medeleg, setup_mideleg, setup_mscratch,
     setup_sie, tp,
 };
+use crate::kmain;
 use crate::layout::init_linker_variable;
 use crate::memory::layout::TIMERVEC;
-use crate::{kmain, print, println};
 use riscv::register;
 use riscv::register::utvec::TrapMode;
 
@@ -67,14 +65,4 @@ unsafe fn timer_init() {
 
     // enable machine-mode timer interrupts.
     register::mie::set_mtimer();
-}
-
-#[no_mangle]
-extern "C" fn kerneltrap() {
-    println!("Timer Interrupt Done");
-    loop {
-        unsafe {
-            asm!("wfi");
-        }
-    }
 }

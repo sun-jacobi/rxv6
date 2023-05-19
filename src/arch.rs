@@ -4,12 +4,13 @@ use core::{
 };
 use riscv::register;
 
-use crate::memory::layout::{CLINT, CLINT_MTIME, PLIC};
+use crate::memory::layout::{CLINT, CLINT_MTIME};
 
 pub(crate) const MAXVA: u64 = 1 << (9 + 9 + 9 + 12 - 1); // sv39
 pub(crate) const PGSIZE: u64 = 4096; // 4096 bytes;
 pub(crate) const NCPU: usize = 1; // number of cpus
 pub(crate) const INTERVAL: u64 = 1000000; // about 1/10th second in qemu.
+pub(crate) const NPROC: usize = 64; // maximum number of processes
 
 pub(crate) mod tp {
     #[inline]
@@ -107,17 +108,11 @@ pub(crate) fn mret() {
     }
 }
 
-pub(crate) fn set_plic_spriority() {
-    let id = register::mhartid::read() as u64;
-    let plic_spriority = PLIC + 0x201000 + 0x2000 * id;
-    unsafe {
-        write_volatile(plic_spriority as *mut u64, 0);
-    }
-}
-
 #[inline]
 pub(crate) fn cpu_id() -> usize {
-    let id : usize;
-    unsafe { asm!("mv {id}, tp", id = out(reg) id); } 
+    let id: usize;
+    unsafe {
+        asm!("mv {id}, tp", id = out(reg) id);
+    }
     id
 }

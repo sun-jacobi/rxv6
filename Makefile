@@ -35,21 +35,26 @@ qemu: $(KERNEL) $(DRIVE)
 debug: $(KERNEL) $(DRIVE)
 	$(QEMU) $(QEMUOPTS) -s -S
 
-gdb:
-	$(GDB) -x debug.gdb
 
-dump: 
-	$(OBJDUMP) -d $(KERNEL)
 
-quit: 
-	telnet localhost 45454
+
+
 	
 ##### 
-.PHONY: clean
+.PHONY: clean monitor dump gdb
 clean:
 	cargo clean
 	rm -f fs.img
 
+monitor: 
+	telnet localhost 45454
+
+dump: 
+	$(OBJDUMP) -d $(KERNEL)
+
+
+gdb:
+	$(GDB) -x debug.gdb
 
 
 

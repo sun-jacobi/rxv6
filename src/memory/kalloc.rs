@@ -9,6 +9,7 @@ const PGSIZE: usize = 4096;
 
 pub(crate) static KALLOC: SpinLock<Kalloc> = SpinLock::new(Kalloc::new());
 
+// Linked List Page Allocator
 pub struct Kalloc {
     head: Option<*mut Page>,
 }
@@ -25,6 +26,7 @@ impl Kalloc {
         Self { head: None }
     }
 
+    // init the kernel page allocator
     pub fn kinit() {
         unsafe {
             KALLOC.lock().insert(END, PHYSTOP);

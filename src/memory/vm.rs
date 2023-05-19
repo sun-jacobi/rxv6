@@ -1,9 +1,10 @@
 use core::{panic, slice};
 
 use super::layout::{ETEXT, KERNBASE, PHYSTOP, UART, VIRTIO0};
-use crate::arch::PGSIZE;
+use crate::arch::{NPROC, PGSIZE};
 use crate::lock::spinlock::SpinLock;
-use crate::memory::layout::{PLIC, TRAMPOLINE, TRAPTEXT};
+use crate::memory::kalloc::KALLOC;
+use crate::memory::layout::{kstack, PLIC, TRAMPOLINE, TRAPTEXT};
 use riscv::asm::sfence_vma_all;
 use riscv::register::satp;
 use riscv::register::satp::Mode;
@@ -86,6 +87,18 @@ impl Kvm {
             // the highest virtual address in the kernel.
             kvm.map(TRAMPOLINE, TRAPTEXT, PGSIZE, PTE_R | PTE_X);
             assert_eq!(kvm.translate(TRAMPOLINE), TRAPTEXT);
+
+            // allocate and map a kernel stack for each process.
+            for p in 0..NPROC {
+                let phys_addr = if let Some(addr) = KALLOC.lock().alloc() {
+                    addr
+                } else {
+                    panic!("failed to create the kernel stack");
+                };
+                let virt_addr = kstack(p);
+                kvm.map(virt_addr, phys_addr, PGSIZE, PTE_R | PTE_W);
+                assert_eq!(kvm.translate(virt_addr), phys_addr);
+            }
         }
     }
 
@@ -154,6 +167,7 @@ impl PageTable {
         lv3_tbl.ptes[lv3_idx] = lv3_pte;
     }
 
+    // translate virtual address to physical address
     pub fn translate(&self, virt_addr: u64) -> u64 {
         // lv1
         let lv1_ptes = &self.ptes;
@@ -205,7 +219,6 @@ impl PageTable {
     }
 
     pub fn create_table() -> Self {
-        use crate::memory::kalloc::KALLOC;
         let addr = if let Some(page) = KALLOC.lock().alloc() {
             page
         } else {
