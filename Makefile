@@ -1,6 +1,5 @@
 K=kernel
 
-
 GDB=riscv64-unknown-elf-gdb
 OBJDUMP=riscv64-unknown-elf-objdump
 ASM=./src/asm/*.S 
@@ -34,9 +33,6 @@ qemu: $(KERNEL) $(DRIVE)
 
 debug: $(KERNEL) $(DRIVE)
 	$(QEMU) $(QEMUOPTS) -s -S
-
-
-
 
 
 	

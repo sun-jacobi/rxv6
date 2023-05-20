@@ -2,7 +2,6 @@ use core::{panic, slice};
 
 use super::layout::{ETEXT, KERNBASE, PHYSTOP, UART, VIRTIO0};
 use crate::arch::{NPROC, PGSIZE};
-use crate::lock::spinlock::SpinLock;
 use crate::memory::kalloc::KALLOC;
 use crate::memory::layout::{kstack, PLIC, TRAMPOLINE, TRAPTEXT};
 use riscv::asm::sfence_vma_all;
@@ -35,8 +34,6 @@ pub const PTE_W: u64 = 1 << 2; // writable
 pub const PTE_X: u64 = 1 << 3; // executable
 pub const _PTE_U: u64 = 1 << 4; // user can access
 
-static KVM: SpinLock<Kvm> = SpinLock::new(Kvm::new());
-
 // The risc-v Sv39 scheme has three levels of page-table
 // pages. A page-table page contains 512 64-bit PTEs.
 // A 64-bit virtual address is split into five fields:
@@ -52,15 +49,9 @@ pub enum PageTableLevel {
 }
 
 impl Kvm {
-    // create a empty kernel page table
-    pub const fn new() -> Self {
-        Self { root: 0 }
-    }
-
-    // init the kernel map
-    pub fn init() {
+    // create the kernel map
+    pub fn init() -> Self {
         let mut kvm = PageTable::create_table();
-        KVM.lock().root = kvm.base_addr();
         unsafe {
             // uart register
             kvm.map(UART, UART, PGSIZE, PTE_R | PTE_W);
@@ -100,11 +91,14 @@ impl Kvm {
                 assert_eq!(kvm.translate(virt_addr), phys_addr);
             }
         }
+        Self {
+            root: kvm.base_addr(),
+        }
     }
 
     // turn on the mmu hardware
-    pub fn init_hart() {
-        let ppn = { (KVM.lock().root >> 12) as usize };
+    pub fn init_hart(&self) {
+        let ppn = { (self.root >> 12) as usize };
         unsafe {
             // wait for any previous writes to the page table memory to finish.
             sfence_vma_all();

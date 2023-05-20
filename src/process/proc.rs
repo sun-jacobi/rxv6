@@ -1,5 +1,10 @@
+use core::{cell::OnceCell, ptr};
+
+use super::cpu::Context;
+
 /// State of a Process
-enum State {
+#[allow(dead_code)]
+pub(crate) enum State {
     Unused,
     Used,
     Sleeping,
@@ -10,32 +15,17 @@ enum State {
 
 // Per-process state
 pub(crate) struct Proc {
-    state: State,
-    pid: u8,
-    // kstack : u64,
+    pub(crate) state: State,            // Process state
+    pub(crate) kstack: OnceCell<u64>,   // Virtual address of kernel stack
+    pub(crate) context: *const Context, // swtch() here to run process
 }
 
 impl Proc {
-    pub(crate) fn pid(&self) -> u8 {
-        self.pid
-    }
-
     pub(crate) fn new() -> Self {
-        Proc {
-            state: State::Runnable,
-            pid: 0,
+        Self {
+            state: State::Unused,
+            kstack: OnceCell::new(),
+            context: ptr::null(),
         }
-    }
-
-    pub(crate) fn init(self) -> Self {
-        self
-    }
-}
-
-pub(crate) struct Scheduler {}
-
-impl Scheduler {
-    pub(crate) fn run(self) -> ! {
-        loop {}
     }
 }

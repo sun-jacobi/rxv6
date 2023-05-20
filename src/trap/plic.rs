@@ -1,6 +1,5 @@
 use core::ptr::write_volatile;
 
-
 use crate::{
     arch::cpu_id,
     memory::layout::{PLIC, UART0_IRQ, VIRTIO0_IRQ},

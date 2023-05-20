@@ -1,4 +1,4 @@
-use crate::{memory::layout::KERNELVEC, println, print};
+use crate::memory::layout::KERNELVEC;
 use riscv::register::{
     scause::{self, Interrupt, Trap},
     utvec::TrapMode,
@@ -17,11 +17,12 @@ extern "C" fn kerneltrap() {
     match devintr() {
         // Software interrupt from a machine-mode timer interrupt
         Interrupt::SupervisorSoft => {
-            println!("timer");
             return;
         }
         // Supervisor external interrupt
-        Interrupt::SupervisorExternal => return,
+        Interrupt::SupervisorExternal => {
+            return;
+        }
         i => panic!("Kernel Panic: {:?} should not be handled in kernel", i),
     }
 }
@@ -34,7 +35,7 @@ extern "C" fn usertrap() {}
 fn devintr() -> Interrupt {
     let scause = scause::read().cause();
     match scause {
-        Trap::Interrupt(i) => return i,
+        Trap::Interrupt(i) => i,
         Trap::Exception(e) => panic!("Kernel Panic: {:?}", e),
     }
 }

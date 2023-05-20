@@ -1,3 +1,9 @@
+pub(crate) mod cpu;
+pub(crate) mod master;
 pub(crate) mod proc;
+use crate::process::master::MASTER;
 
-pub(crate) fn init() {}
+// initialize the process table
+pub(crate) fn init() {
+    MASTER.init();
+}

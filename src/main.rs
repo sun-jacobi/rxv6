@@ -1,23 +1,21 @@
 #![no_main]
 #![no_std]
-
+#[allow(clippy::borrow_interior_mutable_const)]
 mod arch;
 mod boot;
 mod driver;
 mod lock;
 mod memory;
-// mod process;
+mod process;
 mod trap;
 
 use crate::{
     arch::cpu_id,
-    memory::{
-        layout,
-        vm::Kvm,
-    },
+    memory::{layout, vm::Kvm},
 };
-use core::{hint::spin_loop, panic::PanicInfo, arch::asm};
+use core::panic::PanicInfo;
 use memory::kalloc::Kalloc;
+use process::master::MASTER;
 //====================================
 #[panic_handler]
 fn panic(panic: &PanicInfo<'_>) -> ! {
@@ -33,21 +31,18 @@ extern "C" fn kmain() {
         print!("\x1B[2J\x1B[1;1H");
         println!("RXV6: An Eduacationol OS In Rust.");
         println!("{}", LOGO);
-        Kalloc::kinit(); // init the kernel page allocator
-        Kvm::init(); // init the kernel page table
-        Kvm::init_hart(); // turn on paging hardware
+        Kalloc::kinit(); // init the kernel page allocator.
+        Kvm::init().init_hart(); // create and turn on the kernel page table.
         println!("Initialized Kernel Page Table.");
-        // process::init(); // process table
         trap::init(); // install kernel trap vector
         trap::plic::init(); // set up interrupt controller
         trap::plic::init_hart(); // ask PLIC for device interrupts
-        println!("Initialized PLIC.");
-        loop {
-            unsafe { asm!("wfi") };
-        }
+        println!("Initialized Kernel Trap and PLIC.");
+        process::init(); // process table
     } else {
-        spin_loop()
     }
+
+    MASTER.scheduler();
 }
 
 pub static LOGO: &str = r"
@@ -60,5 +55,3 @@ ________     ___    ___ ___      ___ ________
     \|__|\|__/__/ /\ __\    \|__|/       \|_______|
              |__|/ \|__|                           
 ";
-
-
