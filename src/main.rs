@@ -42,7 +42,9 @@ extern "C" fn kmain() {
     } else {
     }
 
-    MASTER.scheduler();
+    unsafe {
+        MASTER.scheduler();
+    }
 }
 
 pub static LOGO: &str = r"

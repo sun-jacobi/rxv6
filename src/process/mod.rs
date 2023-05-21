@@ -5,5 +5,7 @@ use crate::process::master::MASTER;
 
 // initialize the process table
 pub(crate) fn init() {
-    MASTER.init();
+    unsafe {
+        MASTER.init();
+    }
 }

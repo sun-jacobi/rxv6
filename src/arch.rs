@@ -2,7 +2,7 @@ use core::{
     arch::asm,
     ptr::{read_volatile, write_volatile},
 };
-use riscv::register;
+use riscv::register::{self, sstatus};
 
 use crate::memory::layout::{CLINT, CLINT_MTIME};
 
@@ -115,4 +115,18 @@ pub(crate) fn cpu_id() -> usize {
         asm!("mv {id}, tp", id = out(reg) id);
     }
     id
+}
+
+#[inline]
+pub(crate) fn intr_on() {
+    unsafe {
+        sstatus::set_sie();
+    }
+}
+
+#[inline]
+pub(crate) fn intr_off() {
+    unsafe {
+        sstatus::clear_sie();
+    }
 }

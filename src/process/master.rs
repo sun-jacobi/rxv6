@@ -1,12 +1,15 @@
 use super::cpu::{Context, CPU};
-use crate::arch::{cpu_id, NCPU, NPROC};
+use crate::arch::{cpu_id, intr_off, intr_on, NCPU, NPROC};
+use crate::lock::spinlock::Guard;
 use crate::lock::spinlock::SpinLock;
 use crate::memory::layout::kstack;
+use crate::{println, print};
 use crate::process::proc::{Proc, State};
 use core::cell::OnceCell;
 use core::ops::Index;
 
-pub(crate) static MASTER: Master = Master::new();
+
+pub(crate) static mut MASTER: Master = Master::new();
 
 // Per-CPU process scheduler.
 pub(crate) struct Master {
@@ -36,9 +39,24 @@ impl Master {
         }
     }
 
+    // Return this CPU's cpu struct.
+    // Interrupts must be disabled.
     pub(crate) fn my_cpu(&self) -> &CPU {
         let cpu_id = cpu_id();
         &self.cpus[cpu_id]
+    }
+
+    pub(crate) fn my_cpu_mut(&mut self) -> &mut CPU {
+        let cpu_id = cpu_id();
+        &mut self.cpus[cpu_id]
+    }
+
+    // Return the current struct proc *, or zero if none.
+    pub(crate) fn my_proc(&self) -> Option<Guard<Proc>> {
+        intr_on();
+        let cpu = self.my_cpu();
+        intr_off();
+        Some(self[cpu.pin?].lock())
     }
 
     // Each CPU calls scheduler() after setting itself up.
@@ -48,24 +66,56 @@ impl Master {
     //  - eventually that process transfers control
     //    via swtch back to the scheduler.
     pub(crate) fn scheduler(&self) -> ! {
+        // it is safe because the interrupt is not on.
         let my_cpu = self.my_cpu();
         loop {
+            intr_on();
             for i in 0..NPROC {
-                let mut proc = self[i].lock();
+
+                {
+                    let proc = self[i].lock();
+                }
+                let proc = self[i].lock();
                 if let State::Runnable = proc.state {
-                    // Switch to chosen process. It 
-                    // is the process's job to release 
+                    // Switch to chosen process. It
+                    // is the process's job to release
                     // its lock and then reacquire it
                     // before jumping back to us.
-                    proc.state = State::Running;
                     assert!(!proc.context.is_null());
                     unsafe {
                         swtch(my_cpu.context, proc.context);
                     }
-                    
                 }
             }
         }
+    }
+
+    // Switch to scheduler.  Must hold only p->lock
+    // and have changed proc->state. Saves and restores
+    // intena because intena is a property of this
+    // kernel thread, not this CPU. It should
+    // be proc->intena and proc->noff, but that would
+    // break in the few places where a lock is held but
+    // there's no process.
+    pub(crate) fn sched(&self, proc: Guard<Proc>) {
+        if let State::Running = proc.state {
+            panic!("process should not be running");
+        }
+        // switch to scheduler
+        unsafe {
+            swtch(proc.context, self.my_cpu().context);
+        }
+    }
+
+    // Give up the CPU for one scheduling round.
+    pub(crate) fn step(&self) {
+        let mut proc = if let Some(proc) = self.my_proc() {
+            proc
+        } else {
+            panic!("CPU should contain a process");
+        };
+        proc.state = State::Runnable;
+        self.sched(proc);
     }
 }
 
@@ -77,5 +127,6 @@ impl Index<usize> for Master {
 }
 
 extern "C" {
-    fn swtch(old: *const Context, new: *const Context);
+    // swtch.S
+    fn swtch(old: *mut Context, new: *mut Context);
 }

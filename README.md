@@ -2,11 +2,14 @@
 
 
 ## Roadmap
-+ [x] virtual memory
-+ [x] timer interrup
-+ [ ] allocator
-+ [ ] trap
-+ [ ] process
++ [x] Page Allocator
++ [x] MMU
++ [x] Trap
++ [ ] Round Robin Scheduling
++ [ ] File System
++ [ ] Userspace
++ [ ] System Call
++ [ ] Net Stack
 ...
 
 

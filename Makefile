@@ -42,15 +42,20 @@ clean:
 	cargo clean
 	rm -f fs.img
 
+# QEMU Monitor
 monitor: 
 	telnet localhost 45454
 
 dump: 
 	$(OBJDUMP) -d $(KERNEL)
 
-
 gdb:
 	$(GDB) -x debug.gdb
+
+# Alias for developing
+g : gdb
+m : monitor
+d : debug
 
 
 

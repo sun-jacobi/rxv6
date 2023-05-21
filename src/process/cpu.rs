@@ -23,11 +23,19 @@ pub(crate) struct Context {
 
 // Per-CPU state.
 pub(crate) struct CPU {
-    pub(crate) context: *const Context,
+    pub(crate) context: *mut Context,
+    pub(crate) pin: Option<usize>, // index in process table
+    pub(crate) nlock: u8,          // number of acquired lock
+    pub(crate) intr: bool,
 }
 
 impl CPU {
     pub(crate) const fn new() -> Self {
-        CPU { context:  ptr::null()}
+        CPU {
+            context: ptr::null_mut(),
+            pin: None,
+            nlock: 0,
+            intr: false,
+        }
     }
 }

@@ -1,10 +1,14 @@
+use riscv::register::sstatus;
+use crate::arch::{intr_off, intr_on};
+use crate::println;
+use crate::process::master::MASTER;
 use core::hint::spin_loop;
+use core::ops::{Deref, DerefMut, Drop};
 use core::sync::atomic::Ordering::{Acquire, Release};
 use core::{cell::UnsafeCell, sync::atomic::AtomicBool};
 
 // Thanks to Mara Bos's brilliant book!
 // https://marabos.nl/atomics/
-
 pub(crate) struct SpinLock<T> {
     locked: AtomicBool,
     data: UnsafeCell<T>,
@@ -21,6 +25,11 @@ impl<T> SpinLock<T> {
     }
 
     pub(crate) fn lock(&self) -> Guard<T> {
+        let old = sstatus::read().sie(); 
+        intr_off(); // disable the interrupt to avoid the deadlock.
+        let cpu = unsafe { MASTER.my_cpu_mut() };
+        cpu.intr = old;
+        cpu.nlock += 1;
         while self.locked.swap(true, Acquire) {
             spin_loop();
         }
@@ -31,8 +40,6 @@ impl<T> SpinLock<T> {
 pub struct Guard<'a, T> {
     lock: &'a SpinLock<T>,
 }
-
-use core::ops::{Deref, DerefMut, Drop};
 
 impl<T> Deref for Guard<'_, T> {
     type Target = T;
@@ -50,5 +57,12 @@ impl<T> DerefMut for Guard<'_, T> {
 impl<T> Drop for Guard<'_, T> {
     fn drop(&mut self) {
         self.lock.locked.store(false, Release);
+        let cpu = unsafe { MASTER.my_cpu_mut() };
+        cpu.nlock -= 1;
+        use crate::print;
+        if cpu.nlock == 0 && cpu.intr { 
+            println!("interrupt!");
+            intr_on();
+        }
     }
 }

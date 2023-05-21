@@ -1,4 +1,5 @@
 use crate::memory::layout::KERNELVEC;
+use crate::MASTER;
 use riscv::register::{
     scause::{self, Interrupt, Trap},
     utvec::TrapMode,
@@ -15,13 +16,16 @@ pub(crate) fn init() {
 #[no_mangle]
 extern "C" fn kerneltrap() {
     match devintr() {
-        // Software interrupt from a machine-mode timer interrupt
+        // Software interrupt from a machine-mode timer interrupt.
         Interrupt::SupervisorSoft => {
+            unsafe {
+                MASTER.step();
+            } // give up the CPU.
             return;
         }
         // Supervisor external interrupt
         Interrupt::SupervisorExternal => {
-            return;
+            unimplemented!("Interrupt::SupervisorExternal");
         }
         i => panic!("Kernel Panic: {:?} should not be handled in kernel", i),
     }

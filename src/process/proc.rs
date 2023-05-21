@@ -4,6 +4,7 @@ use super::cpu::Context;
 
 /// State of a Process
 #[allow(dead_code)]
+#[derive(Debug)]
 pub(crate) enum State {
     Unused,
     Used,
@@ -15,9 +16,9 @@ pub(crate) enum State {
 
 // Per-process state
 pub(crate) struct Proc {
-    pub(crate) state: State,            // Process state
-    pub(crate) kstack: OnceCell<u64>,   // Virtual address of kernel stack
-    pub(crate) context: *const Context, // swtch() here to run process
+    pub(crate) state: State,          // Process state
+    pub(crate) kstack: OnceCell<u64>, // Virtual address of kernel stack
+    pub(crate) context: *mut Context, // swtch() here to run process
 }
 
 impl Proc {
@@ -25,7 +26,7 @@ impl Proc {
         Self {
             state: State::Unused,
             kstack: OnceCell::new(),
-            context: ptr::null(),
+            context: ptr::null_mut(),
         }
     }
 }
