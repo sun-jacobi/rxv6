@@ -15,7 +15,7 @@ use crate::{
 };
 use core::panic::PanicInfo;
 use memory::kalloc::Kalloc;
-use process::master::MASTER;
+use process::master::PMASTER;
 //====================================
 #[panic_handler]
 fn panic(panic: &PanicInfo<'_>) -> ! {
@@ -43,7 +43,7 @@ extern "C" fn kmain() {
     }
 
     unsafe {
-        MASTER.scheduler();
+        PMASTER.scheduler();
     }
 }
 

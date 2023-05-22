@@ -1,5 +1,5 @@
 use crate::memory::layout::KERNELVEC;
-use crate::MASTER;
+use crate::PMASTER;
 use riscv::register::{
     scause::{self, Interrupt, Trap},
     utvec::TrapMode,
@@ -17,9 +17,10 @@ pub(crate) fn init() {
 extern "C" fn kerneltrap() {
     match devintr() {
         // Software interrupt from a machine-mode timer interrupt.
+        // step-->sched-->scheduler-->
         Interrupt::SupervisorSoft => {
             unsafe {
-                MASTER.step();
+                PMASTER.step();
             } // give up the CPU.
             return;
         }

@@ -1,3 +1,5 @@
+use crate::arch::NCPU;
+use crate::cpu_id;
 use core::ptr;
 
 // Saved registers for kernel context switches.
@@ -34,8 +36,34 @@ impl CPU {
         CPU {
             context: ptr::null_mut(),
             pin: None,
-            nlock: 0,
-            intr: false,
+            nlock: 0,    // num of locks be used
+            intr: false, // is interrupt already on
         }
+    }
+}
+
+pub(crate) static mut CMASTER: CMaster = CMaster::new();
+
+pub(crate) struct CMaster {
+    cpus: [CPU; NCPU],
+}
+
+impl CMaster {
+    const fn new() -> Self {
+        Self {
+            cpus: [CPU::new(); NCPU],
+        }
+    }
+
+    pub(crate) fn my_cpu(&self) -> &CPU {
+        let cpu_id = cpu_id();
+        &self.cpus[cpu_id]
+    }
+
+    // Return this CPU's cpu struct.
+    // Interrupts must be disabled.
+    pub(crate) fn my_cpu_mut(&mut self) -> &mut CPU {
+        let cpu_id = cpu_id();
+        &mut self.cpus[cpu_id]
     }
 }

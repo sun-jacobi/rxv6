@@ -1,29 +1,26 @@
-use super::cpu::{Context, CPU};
-use crate::arch::{cpu_id, intr_off, intr_on, NCPU, NPROC};
+use super::cpu::Context;
+use crate::arch::{intr_off, intr_on, NPROC};
 use crate::lock::spinlock::Guard;
 use crate::lock::spinlock::SpinLock;
 use crate::memory::layout::kstack;
-use crate::{println, print};
+use crate::process::cpu::CMASTER;
 use crate::process::proc::{Proc, State};
 use core::cell::OnceCell;
 use core::ops::Index;
 
-
-pub(crate) static mut MASTER: Master = Master::new();
+pub(crate) static mut PMASTER: PMaster = PMaster::new();
 
 // Per-CPU process scheduler.
-pub(crate) struct Master {
+pub(crate) struct PMaster {
     procs: OnceCell<[SpinLock<Proc>; NPROC]>,
-    cpus: [CPU; NCPU],
 }
 
-unsafe impl Sync for Master {}
+unsafe impl Sync for PMaster {}
 
-impl Master {
+impl PMaster {
     pub(crate) const fn new() -> Self {
-        Master {
+        Self {
             procs: OnceCell::new(),
-            cpus: [CPU::new(); NCPU],
         }
     }
 
@@ -39,22 +36,10 @@ impl Master {
         }
     }
 
-    // Return this CPU's cpu struct.
-    // Interrupts must be disabled.
-    pub(crate) fn my_cpu(&self) -> &CPU {
-        let cpu_id = cpu_id();
-        &self.cpus[cpu_id]
-    }
-
-    pub(crate) fn my_cpu_mut(&mut self) -> &mut CPU {
-        let cpu_id = cpu_id();
-        &mut self.cpus[cpu_id]
-    }
-
     // Return the current struct proc *, or zero if none.
     pub(crate) fn my_proc(&self) -> Option<Guard<Proc>> {
         intr_on();
-        let cpu = self.my_cpu();
+        let cpu = unsafe { CMASTER.my_cpu() };
         intr_off();
         Some(self[cpu.pin?].lock())
     }
@@ -65,26 +50,25 @@ impl Master {
     //  - swtch to start running that process.
     //  - eventually that process transfers control
     //    via swtch back to the scheduler.
-    pub(crate) fn scheduler(&self) -> ! {
+    pub(crate) fn scheduler(&mut self) -> ! {
         // it is safe because the interrupt is not on.
-        let my_cpu = self.my_cpu();
+        let my_cpu = unsafe { CMASTER.my_cpu_mut() };
         loop {
             intr_on();
             for i in 0..NPROC {
-
-                {
-                    let proc = self[i].lock();
-                }
-                let proc = self[i].lock();
+                let mut proc = self[i].lock();
                 if let State::Runnable = proc.state {
-                    // Switch to chosen process. It
-                    // is the process's job to release
-                    // its lock and then reacquire it
-                    // before jumping back to us.
+                    // context should contain something
                     assert!(!proc.context.is_null());
+                    // cpu should not master any process now.
+                    assert!(my_cpu.pin.is_none());
+                    proc.state = State::Running;
+                    my_cpu.pin = Some(i);
                     unsafe {
+                        // Switch to chosen process.
                         swtch(my_cpu.context, proc.context);
                     }
+                    my_cpu.pin = None; // cpu master no process now
                 }
             }
         }
@@ -103,7 +87,7 @@ impl Master {
         }
         // switch to scheduler
         unsafe {
-            swtch(proc.context, self.my_cpu().context);
+            swtch(proc.context, CMASTER.my_cpu().context);
         }
     }
 
@@ -119,7 +103,7 @@ impl Master {
     }
 }
 
-impl Index<usize> for Master {
+impl Index<usize> for PMaster {
     type Output = SpinLock<Proc>;
     fn index(&self, index: usize) -> &Self::Output {
         &self.procs.get().unwrap()[index]
