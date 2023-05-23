@@ -1,11 +1,13 @@
-use super::cpu::Context;
-use crate::arch::{intr_off, intr_on, NPROC};
+use super::cpu::{Context, TrapFrame};
+use crate::arch::{intr_off, intr_on, NPROC, PGSIZE};
+use crate::layout::TRAPFRAME;
 use crate::lock::spinlock::Guard;
 use crate::lock::spinlock::SpinLock;
-use crate::memory::layout::{kstack_end, kstack_start};
+use crate::memory::layout::{kstack_end, kstack_start, TRAMPOLINE, TRAPTEXT};
+use crate::memory::vm::{PageTable, PTE_R, PTE_W, PTE_X};
 use crate::process::cpu::CMASTER;
 use crate::process::proc::{Proc, State};
-use crate::trap::forkret;
+use crate::trap::usertrapret;
 use core::cell::OnceCell;
 use core::ops::{Add, Index};
 use core::ptr;
@@ -59,8 +61,9 @@ impl PMaster {
     pub(crate) fn my_proc(&self) -> Option<Guard<Proc>> {
         intr_off();
         let cpu = unsafe { CMASTER.my_cpu() };
+        let proc = self[cpu.pin?].lock();
         intr_on();
-        Some(self[cpu.pin?].lock())
+        Some(proc)
     }
 
     // Each CPU calls scheduler() after setting itself up.
@@ -131,26 +134,39 @@ impl PMaster {
     // If found, initialize state required to run in the kernel,
     // and return with p->lock held.
     // If there are no free procs, or a memory allocation fails, return 0
-    pub(crate) fn alloc(&mut self) -> Option<Proc> {
-        let pid = self.alloc_pid();
-
+    pub(crate) fn alloc(&mut self) -> Option<Guard<Proc>> {
         for pin in 0..NPROC {
             let mut proc = self[pin].lock();
             if let State::Unused = proc.state {
-                let mut context = Context::default();
-                context.ra = forkret as u64;
-                context.sp = kstack_end(pin);
-                // proc.context = context;
-            }
+                proc.pid = self.alloc_pid();
+                proc.state = State::Used;
+                // Allocate a trapframe page.
+                proc.trapframe = TrapFrame::new()?;
+                // An empty user page tab
+                let mut pagetable = PageTable::create_table();
+                unsafe {
+                    pagetable.map(TRAMPOLINE, TRAPTEXT, PGSIZE, PTE_R | PTE_X);
+                    pagetable.map(TRAPFRAME, proc.trapframe as u64, PGSIZE, PTE_R | PTE_W);
+                }
 
-            proc.pid = pid;
+                proc.pagetable = pagetable.base_addr();
+
+                // Set up new context to start executing at forkret,
+                // which returns to user space.
+                let mut context = Context::default();
+                context.ra = usertrapret as u64;
+                context.sp = kstack_end(pin);
+                proc.context = context;
+
+                return Some(proc);
+            }
         }
 
         // no free procs
         None
     }
 
-    pub(crate) fn alloc_pid(&mut self) -> usize {
+    pub(crate) fn alloc_pid(&self) -> usize {
         let mut curr = self.pid.lock();
         *curr = curr.add(1);
         *curr
@@ -158,11 +174,14 @@ impl PMaster {
 
     // Set up first user process.
     pub(crate) fn userinit(&mut self) {
-        let _p = if let Some(p) = self.alloc() {
+        let mut proc = if let Some(p) = self.alloc() {
             p
         } else {
             panic!("failed to create the first process");
         };
+        // proc.trapframe.sp = PGSIZE; // user stack pointer
+        // proc.trapframe.epc = 0; // user program counter
+        proc.state = State::Runnable;
     }
 }
 

@@ -1,5 +1,7 @@
-use crate::memory::layout::KERNELVEC;
+use core::hint::spin_loop;
+
 use crate::PMASTER;
+use crate::{memory::layout::KERNELVEC, print, println};
 use riscv::register::{
     scause::{self, Interrupt, Trap},
     utvec::TrapMode,
@@ -47,4 +49,11 @@ fn devintr() -> Interrupt {
 
 // A fork child's very first scheduling by scheduler()
 // will swtch to forkret.
-pub(crate) fn forkret() {}
+pub(crate) fn _forkret() {}
+
+pub(crate) fn usertrapret() {
+    println!("USER TRAP RET");
+    loop {
+        spin_loop();
+    }
+}

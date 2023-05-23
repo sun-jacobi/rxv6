@@ -193,7 +193,7 @@ impl PageTable {
         ((lv3_pte >> 10) << 12) | Self::offset(virt_addr)
     }
 
-    pub fn base_addr(&mut self) -> u64 {
+    pub fn base_addr(&self) -> u64 {
         self.ptes.as_ptr() as u64
     }
 

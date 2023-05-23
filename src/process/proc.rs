@@ -1,6 +1,6 @@
-use core::cell::OnceCell;
+use core::{cell::OnceCell, ptr};
 
-use super::cpu::Context;
+use super::cpu::{Context, TrapFrame};
 
 /// State of a Process
 #[allow(dead_code)]
@@ -20,6 +20,8 @@ pub(crate) struct Proc {
     pub(crate) kstack: OnceCell<u64>, // Virtual address of kernel stack
     pub(crate) context: Context,      // swtch() here to run process
     pub(crate) pid: usize,
+    pub(crate) trapframe: *mut TrapFrame,
+    pub(crate) pagetable: u64,
 }
 
 impl Proc {
@@ -29,6 +31,8 @@ impl Proc {
             kstack: OnceCell::new(),
             context: Context::default(),
             pid: 0,
+            pagetable: 0,
+            trapframe: ptr::null_mut(),
         }
     }
 }

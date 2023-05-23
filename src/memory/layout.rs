@@ -67,7 +67,7 @@ pub static mut SCRATCH: [[u64; 5]; NCPU] = [[0; 5]; NCPU];
 //   ...
 //   TRAPFRAME (p->trapframe, used by the trampoline)
 //   TRAMPOLINE (the same page as in the kernel)
-pub const _TRAPFRAME: u64 = TRAMPOLINE - PGSIZE;
+pub const TRAPFRAME: u64 = TRAMPOLINE - PGSIZE;
 
 extern "C" {
     static mut end: u64; // the first address after the kernel

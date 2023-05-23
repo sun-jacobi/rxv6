@@ -1,5 +1,8 @@
+use core::ptr::write_volatile;
+
 use crate::arch::NCPU;
 use crate::cpu_id;
+use crate::memory::kalloc::KALLOC;
 
 // Saved registers for kernel context switches.
 #[repr(C)]
@@ -20,6 +23,69 @@ pub(crate) struct Context {
     s9: u64,
     s10: u64,
     s11: u64,
+}
+
+// per-process data for the trap handling code in trampoline.S.
+// sits in a page by itself just under the trampoline page in the
+// user page table. not specially mapped in the kernel page table.
+// uservec in trampoline.S saves user registers in the trapframe,
+// then initializes registers from the trapframe's
+// kernel_sp, kernel_hartid, kernel_satp, and jumps to kernel_trap.
+// usertrapret() and userret in trampoline.S set up
+// the trapframe's kernel_*, restore user registers from the
+// trapframe, switch to the user page table, and enter user space.
+// the trapframe includes callee-saved user registers like s0-s11 because the
+// return-to-user path via usertrapret() doesn't return through
+// the entire kernel call stack.
+#[repr(C)]
+#[derive(Default)]
+pub(crate) struct TrapFrame {
+    /*   0 */ kernel_satp: u64, // kernel page table
+    /*   8 */ kernel_sp: u64, // top of process's kernel stack
+    /*  16 */ kernel_trap: u64, // usertrap()
+    /*  24 */ pub(crate) epc: u64, // saved user program counter
+    /*  32 */ kernel_hartid: u64, // saved kernel tp
+    /*  40 */ ra: u64,
+    /*  48 */ pub(crate) sp: u64,
+    /*  56 */ gp: u64,
+    /*  64 */ tp: u64,
+    /*  72 */ t0: u64,
+    /*  80 */ t1: u64,
+    /*  88 */ t2: u64,
+    /*  96 */ s0: u64,
+    /* 104 */ s1: u64,
+    /* 112 */ a0: u64,
+    /* 120 */ a1: u64,
+    /* 128 */ a2: u64,
+    /* 136 */ a3: u64,
+    /* 144 */ a4: u64,
+    /* 152 */ a5: u64,
+    /* 160 */ a6: u64,
+    /* 168 */ a7: u64,
+    /* 176 */ s2: u64,
+    /* 184 */ s3: u64,
+    /* 192 */ s4: u64,
+    /* 200 */ s5: u64,
+    /* 208 */ s6: u64,
+    /* 216 */ s7: u64,
+    /* 224 */ s8: u64,
+    /* 232 */ s9: u64,
+    /* 240 */ s10: u64,
+    /* 248 */ s11: u64,
+    /* 256 */ t3: u64,
+    /* 264 */ t4: u64,
+    /* 272 */ t5: u64,
+    /* 280 */ t6: u64,
+}
+
+impl TrapFrame {
+    pub(crate) fn new() -> Option<*mut Self> {
+        let frame = KALLOC.lock().alloc()? as *mut TrapFrame;
+        unsafe {
+            write_volatile(frame, TrapFrame::default());
+        }
+        Some(frame)
+    }
 }
 
 impl Context {
