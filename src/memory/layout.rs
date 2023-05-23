@@ -46,8 +46,13 @@ pub const TRAMPOLINE: u64 = MAXVA - PGSIZE;
 // map kernel stacks beneath the trampoline,
 // each surrounded by invalid guard pages.
 #[inline]
-pub fn kstack(pid: usize) -> u64 {
-    TRAMPOLINE - PGSIZE * 2 * (pid + 1) as u64
+pub fn kstack_start(pin: usize) -> u64 {
+    TRAMPOLINE - PGSIZE * 2 * (pin + 1) as u64
+}
+
+#[inline]
+pub(crate) fn kstack_end(pin: usize) -> u64 {
+    TRAMPOLINE - PGSIZE * 2 * (pin + 1) as u64 + PGSIZE
 }
 
 // a scratch area per CPU for machine-mode timer interrupts.

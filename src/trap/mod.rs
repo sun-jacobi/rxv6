@@ -17,7 +17,7 @@ pub(crate) fn init() {
 extern "C" fn kerneltrap() {
     match devintr() {
         // Software interrupt from a machine-mode timer interrupt.
-        // step-->sched-->scheduler-->
+        // intr -> kt --> sh -> kt -> continue
         Interrupt::SupervisorSoft => {
             unsafe {
                 PMASTER.step();
@@ -44,3 +44,7 @@ fn devintr() -> Interrupt {
         Trap::Exception(e) => panic!("Kernel Panic: {:?}", e),
     }
 }
+
+// A fork child's very first scheduling by scheduler()
+// will swtch to forkret.
+pub(crate) fn forkret() {}

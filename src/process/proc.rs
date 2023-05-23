@@ -1,4 +1,4 @@
-use core::{cell::OnceCell, ptr};
+use core::cell::OnceCell;
 
 use super::cpu::Context;
 
@@ -18,7 +18,8 @@ pub(crate) enum State {
 pub(crate) struct Proc {
     pub(crate) state: State,          // Process state
     pub(crate) kstack: OnceCell<u64>, // Virtual address of kernel stack
-    pub(crate) context: *mut Context, // swtch() here to run process
+    pub(crate) context: Context,      // swtch() here to run process
+    pub(crate) pid: usize,
 }
 
 impl Proc {
@@ -26,7 +27,8 @@ impl Proc {
         Self {
             state: State::Unused,
             kstack: OnceCell::new(),
-            context: ptr::null_mut(),
+            context: Context::default(),
+            pid: 0,
         }
     }
 }

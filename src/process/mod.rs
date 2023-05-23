@@ -9,3 +9,9 @@ pub(crate) fn init() {
         PMASTER.init();
     }
 }
+
+pub(crate) fn user_init() {
+    unsafe {
+        PMASTER.userinit();
+    }
+}

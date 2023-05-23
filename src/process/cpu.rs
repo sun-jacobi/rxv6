@@ -1,12 +1,11 @@
 use crate::arch::NCPU;
 use crate::cpu_id;
-use core::ptr;
 
 // Saved registers for kernel context switches.
 #[repr(C)]
 pub(crate) struct Context {
-    ra: u64,
-    sp: u64,
+    pub(crate) ra: u64,
+    pub(crate) sp: u64,
 
     // callee-saved register
     s0: u64,
@@ -23,9 +22,30 @@ pub(crate) struct Context {
     s11: u64,
 }
 
+impl Context {
+    pub(crate) const fn default() -> Self {
+        Self {
+            ra: 0,
+            sp: 0,
+            s0: 0,
+            s1: 0,
+            s2: 0,
+            s3: 0,
+            s4: 0,
+            s5: 0,
+            s6: 0,
+            s7: 0,
+            s8: 0,
+            s9: 0,
+            s10: 0,
+            s11: 0,
+        }
+    }
+}
+
 // Per-CPU state.
 pub(crate) struct CPU {
-    pub(crate) context: *mut Context,
+    pub(crate) context: Context,
     pub(crate) pin: Option<usize>, // index in process table
     pub(crate) nlock: u8,          // number of acquired lock
     pub(crate) intr: bool,
@@ -34,7 +54,7 @@ pub(crate) struct CPU {
 impl CPU {
     pub(crate) const fn new() -> Self {
         CPU {
-            context: ptr::null_mut(),
+            context: Context::default(),
             pin: None,
             nlock: 0,    // num of locks be used
             intr: false, // is interrupt already on

@@ -23,8 +23,7 @@ fn panic(panic: &PanicInfo<'_>) -> ! {
     loop {}
 }
 //====================================
-#[no_mangle]
-extern "C" fn kmain() {
+pub(crate) fn kmain() {
     if cpu_id() == 0 {
         let mut uart = driver::uart::Uart::new();
         uart.init();
@@ -33,12 +32,14 @@ extern "C" fn kmain() {
         println!("{}", LOGO);
         Kalloc::kinit(); // init the kernel page allocator.
         Kvm::init().init_hart(); // create and turn on the kernel page table.
-        println!("Initialized Kernel Page Table.");
+        println!("Loading Kernel Page Table...");
         trap::init(); // install kernel trap vector
         trap::plic::init(); // set up interrupt controller
         trap::plic::init_hart(); // ask PLIC for device interrupts
-        println!("Initialized Kernel Trap and PLIC.");
+        println!("Loading Kernel Trap and PLIC...");
         process::init(); // process table
+        process::user_init(); // first user process
+        println!("Entering Userland...");
     } else {
     }
 

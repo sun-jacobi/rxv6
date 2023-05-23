@@ -3,7 +3,7 @@ use core::{panic, slice};
 use super::layout::{ETEXT, KERNBASE, PHYSTOP, UART, VIRTIO0};
 use crate::arch::{NPROC, PGSIZE};
 use crate::memory::kalloc::KALLOC;
-use crate::memory::layout::{kstack, PLIC, TRAMPOLINE, TRAPTEXT};
+use crate::memory::layout::{kstack_start, PLIC, TRAMPOLINE, TRAPTEXT};
 use riscv::asm::sfence_vma_all;
 use riscv::register::satp;
 use riscv::register::satp::Mode;
@@ -86,7 +86,7 @@ impl Kvm {
                 } else {
                     panic!("failed to create the kernel stack");
                 };
-                let virt_addr = kstack(p);
+                let virt_addr = kstack_start(p);
                 kvm.map(virt_addr, phys_addr, PGSIZE, PTE_R | PTE_W);
                 assert_eq!(kvm.translate(virt_addr), phys_addr);
             }
