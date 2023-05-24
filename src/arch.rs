@@ -130,3 +130,14 @@ pub(crate) fn intr_off() {
         sstatus::clear_sie();
     }
 }
+
+pub(crate) fn make_satp(addr: u64) -> u64 {
+    (addr >> 12) | (8 << 60)
+}
+
+#[inline]
+pub(crate) fn w_sip(bits: usize) {
+    unsafe {
+        asm!("csrw sip, {}", in(reg) bits);
+    }
+}

@@ -40,11 +40,11 @@ pub(crate) struct Context {
 #[repr(C)]
 #[derive(Default)]
 pub(crate) struct TrapFrame {
-    /*   0 */ kernel_satp: u64, // kernel page table
-    /*   8 */ kernel_sp: u64, // top of process's kernel stack
-    /*  16 */ kernel_trap: u64, // usertrap()
+    /*   0 */ pub(crate) kernel_satp: u64, // kernel page table
+    /*   8 */ pub(crate) kernel_sp: u64, // top of process's kernel stack
+    /*  16 */ pub(crate) kernel_trap: u64, // usertrap()
     /*  24 */ pub(crate) epc: u64, // saved user program counter
-    /*  32 */ kernel_hartid: u64, // saved kernel tp
+    /*  32 */ pub(crate) kernel_hartid: u64, // saved kernel tp
     /*  40 */ ra: u64,
     /*  48 */ pub(crate) sp: u64,
     /*  56 */ gp: u64,

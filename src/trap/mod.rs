@@ -1,10 +1,15 @@
-use core::hint::spin_loop;
-
+use crate::arch::{cpu_id, intr_off, make_satp, w_sip, PGSIZE};
+use crate::layout::TRAPTEXT;
+use crate::memory::layout::{KERNELVEC, TRAMPOLINE};
+use crate::process::cpu::CMASTER;
 use crate::PMASTER;
-use crate::{memory::layout::KERNELVEC, print, println};
 use riscv::register::{
+    satp,
     scause::{self, Interrupt, Trap},
-    utvec::TrapMode,
+    sepc, sip,
+    sstatus::{self, SPP},
+    stvec,
+    stvec::TrapMode,
 };
 
 pub(crate) mod plic;
@@ -15,16 +20,27 @@ pub(crate) fn init() {
     }
 }
 
+extern "C" {
+    fn userret(pagetable: u64);
+    fn uservec();
+}
+
 #[no_mangle]
 extern "C" fn kerneltrap() {
     match devintr() {
         // Software interrupt from a machine-mode timer interrupt.
         // intr -> kt --> sh -> kt -> continue
         Interrupt::SupervisorSoft => {
-            unsafe {
-                PMASTER.step();
-            } // give up the CPU.
-            return;
+            // acknowledge the software interrupt by clearing
+            // the SSIP bit in sip.
+            w_sip(sip::read().bits() & !2);
+            let pin = unsafe { CMASTER.my_cpu().pin };
+            if pin != None {
+                // give up the CPU.
+                unsafe {
+                    PMASTER.step();
+                }
+            }
         }
         // Supervisor external interrupt
         Interrupt::SupervisorExternal => {
@@ -51,9 +67,47 @@ fn devintr() -> Interrupt {
 // will swtch to forkret.
 pub(crate) fn _forkret() {}
 
+// return to user space
 pub(crate) fn usertrapret() {
-    println!("USER TRAP RET");
-    loop {
-        spin_loop();
+    let p = if let Some(proc) = unsafe { PMASTER.my_proc() } {
+        proc
+    } else {
+        panic!("CPU should contain a process");
+    };
+    intr_off();
+    // send syscalls, interrupts, and exceptions to uservec in trampoline.
+    let trapframe = p.trapframe;
+    unsafe {
+        let trampoline_uservec = TRAMPOLINE - (uservec as u64 - TRAPTEXT);
+        stvec::write(trampoline_uservec as usize, TrapMode::Direct);
     }
+
+    // set up trapframe values that uservec will need when
+    // the process next traps into the kernel.
+    unsafe {
+        // kernel page table
+        (*trapframe).kernel_satp = satp::read().bits() as u64;
+        // process's kernel stack
+        (*trapframe).kernel_sp = p.kstack.get().unwrap() + PGSIZE;
+        (*trapframe).kernel_trap = usertrap as u64;
+        // hartid
+        (*trapframe).kernel_hartid = cpu_id() as u64;
+    }
+
+    // set up the registers that trampoline.S's sret will use
+    // to get to user space.
+    unsafe {
+        // set S Previous Privilege mode to User
+        sstatus::set_spp(SPP::User);
+        sstatus::set_spie();
+        // set S Exception Program Counter to the saved user pc.
+        sepc::write((*p.trapframe).epc as usize);
+    }
+    // tell trampoline.S the user page table to switch to.
+    let satp = make_satp(p.pagetable);
+    let trampoline_userret_fn: extern "C" fn(satp: u64) = unsafe {
+        let trampoline_userret_addr = TRAMPOLINE + (userret as u64 - TRAPTEXT);
+        core::mem::transmute(trampoline_userret_addr)
+    };
+    trampoline_userret_fn(satp);
 }

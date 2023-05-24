@@ -4,6 +4,7 @@ use super::layout::{ETEXT, KERNBASE, PHYSTOP, UART, VIRTIO0};
 use crate::arch::{NPROC, PGSIZE};
 use crate::memory::kalloc::KALLOC;
 use crate::memory::layout::{kstack_start, PLIC, TRAMPOLINE, TRAPTEXT};
+use crate::process::master::INITCODE;
 use riscv::asm::sfence_vma_all;
 use riscv::register::satp;
 use riscv::register::satp::Mode;
@@ -32,7 +33,7 @@ pub const PTE_V: u64 = 1 << 0; // valid
 pub const PTE_R: u64 = 1 << 1; // readable
 pub const PTE_W: u64 = 1 << 2; // writable
 pub const PTE_X: u64 = 1 << 3; // executable
-pub const _PTE_U: u64 = 1 << 4; // user can access
+pub const PTE_U: u64 = 1 << 4; // user can access
 
 // The risc-v Sv39 scheme has three levels of page-table
 // pages. A page-table page contains 512 64-bit PTEs.
@@ -245,5 +246,16 @@ impl PageTable {
 
     fn used(pte: u64) -> bool {
         pte & PTE_V != 0
+    }
+
+    pub(crate) fn uvmfirst(addr: u64) -> Option<()> {
+        let mut pagetable = PageTable::from_addr(addr);
+        let first_page = KALLOC.lock().alloc()?;
+        pagetable.map(0, first_page, PGSIZE, PTE_W | PTE_R | PTE_X | PTE_U);
+        let initcode = unsafe { slice::from_raw_parts_mut(first_page as *mut u8, INITCODE.len()) };
+        for (i, e) in initcode.iter_mut().enumerate() {
+            *e = INITCODE[i];
+        }
+        Some(())
     }
 }

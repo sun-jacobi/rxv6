@@ -17,16 +17,6 @@ extern "C" {
     fn swtch(old: *mut Context, new: *mut Context);
 }
 
-// a user program that calls exec("/init")
-// assembled from ../user/initcode.S
-// od -t xC ../user/initcode
-pub(crate) const _INITCODE: [u8; 52] = [
-    0x17, 0x05, 0x00, 0x00, 0x13, 0x05, 0x45, 0x02, 0x97, 0x05, 0x00, 0x00, 0x93, 0x85, 0x35, 0x02,
-    0x93, 0x08, 0x70, 0x00, 0x73, 0x00, 0x00, 0x00, 0x93, 0x08, 0x20, 0x00, 0x73, 0x00, 0x00, 0x00,
-    0xef, 0xf0, 0x9f, 0xff, 0x2f, 0x69, 0x6e, 0x69, 0x74, 0x00, 0x00, 0x24, 0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00,
-];
-
 pub(crate) static mut PMASTER: PMaster = PMaster::new();
 
 // Per-CPU process scheduler.
@@ -86,6 +76,7 @@ impl PMaster {
                     my_cpu.pin = Some(i);
                     let old = ptr::addr_of_mut!(my_cpu.context);
                     let new = ptr::addr_of_mut!(proc.context);
+                    drop(proc);
                     // Switch to chosen process.
                     unsafe {
                         swtch(old, new);
@@ -142,6 +133,7 @@ impl PMaster {
                 proc.state = State::Used;
                 // Allocate a trapframe page.
                 proc.trapframe = TrapFrame::new()?;
+
                 // An empty user page tab
                 let mut pagetable = PageTable::create_table();
                 unsafe {
@@ -157,7 +149,6 @@ impl PMaster {
                 context.ra = usertrapret as u64;
                 context.sp = kstack_end(pin);
                 proc.context = context;
-
                 return Some(proc);
             }
         }
@@ -177,10 +168,17 @@ impl PMaster {
         let mut proc = if let Some(p) = self.alloc() {
             p
         } else {
-            panic!("failed to create the first process");
+            panic!("failed to allocate the first process");
         };
-        // proc.trapframe.sp = PGSIZE; // user stack pointer
-        // proc.trapframe.epc = 0; // user program counter
+        if let None = PageTable::uvmfirst(proc.pagetable) {
+            panic!("failed to create page table for the first procress");
+        }
+
+        let trapframe = proc.trapframe;
+        unsafe {
+            (*trapframe).epc = 0; // user program counter
+            (*trapframe).sp = PGSIZE; // user stack pointer
+        }
         proc.state = State::Runnable;
     }
 }
@@ -191,3 +189,10 @@ impl Index<usize> for PMaster {
         &self.procs.get().unwrap()[index]
     }
 }
+
+pub(crate) const INITCODE: [u8; 52] = [
+    0x17, 0x05, 0x00, 0x00, 0x13, 0x05, 0x45, 0x02, 0x97, 0x05, 0x00, 0x00, 0x93, 0x85, 0x35, 0x02,
+    0x93, 0x08, 0x70, 0x00, 0x73, 0x00, 0x00, 0x00, 0x93, 0x08, 0x20, 0x00, 0x73, 0x00, 0x00, 0x00,
+    0xef, 0xf0, 0x9f, 0xff, 0x2f, 0x69, 0x6e, 0x69, 0x74, 0x00, 0x00, 0x24, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00,
+];
