@@ -13,7 +13,7 @@ use crate::{
     arch::cpu_id,
     memory::{layout, vm::Kvm},
 };
-use core::panic::PanicInfo;
+use core::{panic::PanicInfo};
 use memory::kalloc::Kalloc;
 use process::master::PMASTER;
 //====================================

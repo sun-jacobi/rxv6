@@ -1,8 +1,10 @@
+use core::hint::spin_loop;
+
 use crate::arch::{cpu_id, intr_off, make_satp, w_sip, PGSIZE};
 use crate::layout::TRAPTEXT;
 use crate::memory::layout::{KERNELVEC, TRAMPOLINE};
 use crate::process::cpu::CMASTER;
-use crate::PMASTER;
+use crate::{PMASTER, println, print};
 use riscv::register::{
     satp,
     scause::{self, Interrupt, Trap},
@@ -51,7 +53,12 @@ extern "C" fn kerneltrap() {
 }
 
 #[no_mangle]
-extern "C" fn usertrap() {}
+extern "C" fn usertrap() {
+    println!("USER TRAP");
+    loop {
+        spin_loop();
+    }
+}
 
 // check if it's an external interrupt or software interrupt,
 // and handle it.
@@ -78,7 +85,7 @@ pub(crate) fn usertrapret() {
     // send syscalls, interrupts, and exceptions to uservec in trampoline.
     let trapframe = p.trapframe;
     unsafe {
-        let trampoline_uservec = TRAMPOLINE - (uservec as u64 - TRAPTEXT);
+        let trampoline_uservec = TRAMPOLINE + (uservec as u64 - TRAPTEXT);
         stvec::write(trampoline_uservec as usize, TrapMode::Direct);
     }
 
