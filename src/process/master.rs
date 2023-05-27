@@ -68,7 +68,6 @@ impl PMaster {
                     let old = ptr::addr_of_mut!(my_cpu.context);
                     let new = ptr::addr_of_mut!(proc.context);
                     // Switch to chosen process.
-                    drop(proc_info);
                     unsafe {
                         swtch(old, new);
                     }
@@ -103,6 +102,7 @@ impl PMaster {
         let pin = unsafe { CMASTER.my_proc() };
         self.index_mut(pin).info.lock().state = State::Runnable;
         self.sched();
+        self.index_mut(pin).info.unlock();
     }
 
     // Look in the process table for an UNUSED proc.
