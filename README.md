@@ -5,10 +5,9 @@
 + [x] Page Allocator
 + [x] MMU
 + [x] Trap
-+ [ ] Round Robin Scheduling
-+ [ ] File System
-+ [ ] Userspace
++ [x] Round Robin Scheduling
 + [ ] System Call
++ [ ] File System
 + [ ] Net Stack
 ...
 
