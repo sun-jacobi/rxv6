@@ -1,4 +1,4 @@
-use crate::arch::{intr_off, intr_on};
+use crate::arch::{cpu_id, intr_off, intr_on};
 use crate::process::cpu::CMASTER;
 use core::hint::spin_loop;
 use core::ops::{Deref, DerefMut, Drop};
@@ -27,17 +27,31 @@ impl<T> SpinLock<T> {
         let old = sstatus::read().sie();
         intr_off(); // disable the interrupt to avoid the deadlock.
         let cpu = unsafe { CMASTER.my_cpu_mut() };
+        let hart = cpu_id();
         cpu.intr = old;
         cpu.nlock += 1;
         while self.locked.swap(true, Acquire) {
             spin_loop();
         }
-        Guard { lock: self }
+        Guard { lock: self, hart }
+    }
+
+    pub(crate) fn unlock(&self) {
+        self.locked.store(false, Release);
+        let cpu = unsafe { CMASTER.my_cpu_mut() };
+        if cpu.nlock == 0 {
+            return;
+        }
+        cpu.nlock -= 1;
+        if cpu.nlock == 0 && cpu.intr {
+            intr_on();
+        }
     }
 }
 
 pub struct Guard<'a, T> {
     lock: &'a SpinLock<T>,
+    hart: usize,
 }
 
 impl<T> Deref for Guard<'_, T> {
@@ -57,6 +71,9 @@ impl<T> Drop for Guard<'_, T> {
     fn drop(&mut self) {
         self.lock.locked.store(false, Release);
         let cpu = unsafe { CMASTER.my_cpu_mut() };
+        if cpu.nlock == 0 {
+            return;
+        }
         cpu.nlock -= 1;
         if cpu.nlock == 0 && cpu.intr {
             intr_on();

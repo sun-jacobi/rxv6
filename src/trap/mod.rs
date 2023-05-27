@@ -1,10 +1,8 @@
-use core::hint::spin_loop;
-
 use crate::arch::{cpu_id, intr_off, make_satp, w_sip, PGSIZE};
 use crate::layout::TRAPTEXT;
 use crate::memory::layout::{KERNELVEC, TRAMPOLINE};
 use crate::process::cpu::CMASTER;
-use crate::{PMASTER, println, print};
+use crate::{print, println, PMASTER};
 use riscv::register::{
     satp,
     scause::{self, Interrupt, Trap},
@@ -55,9 +53,21 @@ extern "C" fn kerneltrap() {
 #[no_mangle]
 extern "C" fn usertrap() {
     println!("USER TRAP");
-    loop {
-        spin_loop();
+    assert_eq!(sstatus::read().spp(), SPP::User);
+    let p = unsafe { &mut PMASTER[CMASTER.my_proc()] };
+    let trapframe = p.trapframe;
+    unsafe {
+        riscv::register::stvec::write(KERNELVEC as usize, TrapMode::Direct);
+        (*trapframe).epc = sepc::read() as u64;
     }
+
+    match devintr() {
+        Interrupt::SupervisorSoft => unsafe {
+            PMASTER.step();
+        },
+        i => panic!("unsupported interrupt {:?}", i),
+    }
+    usertrapret();
 }
 
 // check if it's an external interrupt or software interrupt,
@@ -66,21 +76,21 @@ fn devintr() -> Interrupt {
     let scause = scause::read().cause();
     match scause {
         Trap::Interrupt(i) => i,
-        Trap::Exception(e) => panic!("Kernel Panic: {:?}", e),
+        Trap::Exception(e) => panic!("Kernel Panic: Exception {:?}", e),
     }
 }
 
 // A fork child's very first scheduling by scheduler()
 // will swtch to forkret.
-pub(crate) fn _forkret() {}
+pub(crate) fn forkret() {
+    let p = unsafe { &mut PMASTER[CMASTER.my_proc()] };
+    p.info.unlock();
+    usertrapret();
+}
 
 // return to user space
 pub(crate) fn usertrapret() {
-    let p = if let Some(proc) = unsafe { PMASTER.my_proc() } {
-        proc
-    } else {
-        panic!("CPU should contain a process");
-    };
+    let p = unsafe { &mut PMASTER[CMASTER.my_proc()] };
     intr_off();
     // send syscalls, interrupts, and exceptions to uservec in trampoline.
     let trapframe = p.trapframe;

@@ -1,6 +1,9 @@
 use core::ptr::write_volatile;
 
+use riscv::register::sstatus;
+
 use crate::arch::NCPU;
+use crate::arch::{intr_off, intr_on};
 use crate::cpu_id;
 use crate::memory::kalloc::KALLOC;
 
@@ -151,5 +154,29 @@ impl CMaster {
     pub(crate) fn my_cpu_mut(&mut self) -> &mut CPU {
         let cpu_id = cpu_id();
         &mut self.cpus[cpu_id]
+    }
+
+    pub(crate) fn push_off(&mut self) {
+        let old = sstatus::read().sie();
+        intr_off(); // disable the interrupt to avoid the deadlock.
+        let cpu = self.my_cpu_mut();
+        cpu.intr = old;
+        cpu.nlock += 1;
+    }
+
+    pub(crate) fn pop_off(&mut self) {
+        let cpu = self.my_cpu_mut();
+        cpu.nlock -= 1;
+        if cpu.nlock == 0 && cpu.intr {
+            intr_on();
+        }
+    }
+
+    // Return the current proc for this cpu, or zero if none.
+    pub(crate) fn my_proc(&mut self) -> usize {
+        self.push_off();
+        let pin = unsafe { CMASTER.my_cpu().pin.unwrap() };
+        self.pop_off();
+        pin
     }
 }
