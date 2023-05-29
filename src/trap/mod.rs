@@ -2,7 +2,7 @@ use crate::arch::{cpu_id, intr_off, make_satp, w_sip, PGSIZE};
 use crate::layout::TRAPTEXT;
 use crate::memory::layout::{KERNELVEC, TRAMPOLINE};
 use crate::process::cpu::CMASTER;
-use crate::{print, println, PMASTER};
+use crate::PMASTER;
 use riscv::register::{
     satp,
     scause::{self, Interrupt, Trap},
@@ -52,7 +52,6 @@ extern "C" fn kerneltrap() {
 
 #[no_mangle]
 extern "C" fn usertrap() {
-    println!("USER TRAP");
     assert_eq!(sstatus::read().spp(), SPP::User);
     let p = unsafe { &mut PMASTER[CMASTER.my_proc()] };
     let trapframe = p.trapframe;
@@ -63,6 +62,7 @@ extern "C" fn usertrap() {
 
     match devintr() {
         Interrupt::SupervisorSoft => unsafe {
+            // timer interrupt
             PMASTER.step();
         },
         i => panic!("unsupported interrupt {:?}", i),

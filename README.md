@@ -6,8 +6,9 @@
 + [x] MMU
 + [x] Trap
 + [x] Round Robin Scheduling
++ [ ] File System 
++ [ ] ELF Loader
 + [ ] System Call
-+ [ ] File System
 + [ ] Net Stack
 ...
 

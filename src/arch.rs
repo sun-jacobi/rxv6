@@ -8,7 +8,7 @@ use crate::memory::layout::{CLINT, CLINT_MTIME};
 
 pub(crate) const MAXVA: u64 = 1 << (9 + 9 + 9 + 12 - 1); // sv39
 pub(crate) const PGSIZE: u64 = 4096; // 4096 bytes;
-pub(crate) const NCPU: usize = 1; // number of cpus
+pub(crate) const NCPU: usize = 4; // number of cpus
 pub(crate) const INTERVAL: u64 = 1000000; // about 1/10th second in qemu.
 pub(crate) const NPROC: usize = 64; // maximum number of processes
 

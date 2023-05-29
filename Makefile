@@ -20,7 +20,7 @@ $(DRIVE):
 
 #### 
 # configure QEMU
-CPUS=1 # develop in single core for now
+CPUS=4 # develop in single core for now
 QEMU=qemu-system-riscv64
 QEMUOPTS = -machine virt -bios none -kernel $(KERNEL) -m 128M -smp $(CPUS) -nographic
 QEMUOPTS += -global virtio-mmio.force-legacy=false

@@ -9,6 +9,7 @@ use crate::memory::kalloc::KALLOC;
 
 // Saved registers for kernel context switches.
 #[repr(C)]
+#[derive(Clone, Copy)]
 pub(crate) struct Context {
     pub(crate) ra: u64,
     pub(crate) sp: u64,
@@ -113,6 +114,7 @@ impl Context {
 }
 
 // Per-CPU state.
+#[derive(Clone, Copy)]
 pub(crate) struct CPU {
     pub(crate) context: Context,
     pub(crate) pin: Option<usize>, // index in process table

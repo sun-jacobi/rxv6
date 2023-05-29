@@ -49,9 +49,11 @@ pub enum PageTableLevel {
     Lv3,
 }
 
+pub static mut KVM: Kvm = Kvm { root: 0 };
+
 impl Kvm {
     // create the kernel map
-    pub fn init() -> Self {
+    pub fn init() {
         let mut kvm = PageTable::create_table();
         unsafe {
             // uart register
@@ -92,14 +94,15 @@ impl Kvm {
                 assert_eq!(kvm.translate(virt_addr), phys_addr);
             }
         }
-        Self {
-            root: kvm.base_addr(),
+
+        unsafe {
+            KVM.root = kvm.base_addr();
         }
     }
 
     // turn on the mmu hardware
-    pub fn init_hart(&self) {
-        let ppn = { (self.root >> 12) as usize };
+    pub fn init_hart() {
+        let ppn = unsafe { (KVM.root >> 12) as usize };
         unsafe {
             // wait for any previous writes to the page table memory to finish.
             sfence_vma_all();

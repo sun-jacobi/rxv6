@@ -1,6 +1,6 @@
 #![no_main]
 #![no_std]
-#[allow(clippy::borrow_interior_mutable_const)]
+#![feature(atomic_bool_fetch_not)]
 mod arch;
 mod boot;
 mod driver;
@@ -13,7 +13,7 @@ use crate::{
     arch::cpu_id,
     memory::{layout, vm::Kvm},
 };
-use core::panic::PanicInfo;
+use core::{hint::spin_loop, panic::PanicInfo, sync::atomic::AtomicBool};
 use memory::kalloc::Kalloc;
 use process::master::PMASTER;
 //====================================
@@ -23,6 +23,7 @@ fn panic(panic: &PanicInfo<'_>) -> ! {
     loop {}
 }
 //====================================
+static STARTED: AtomicBool = AtomicBool::new(false);
 pub(crate) fn kmain() {
     if cpu_id() == 0 {
         let mut uart = driver::uart::Uart::new();
@@ -31,7 +32,8 @@ pub(crate) fn kmain() {
         println!("RXV6: An Eduacationol OS In Rust.");
         println!("{}", LOGO);
         Kalloc::kinit(); // init the kernel page allocator.
-        Kvm::init().init_hart(); // create and turn on the kernel page table.
+        Kvm::init(); // create the kernel page table.
+        Kvm::init_hart(); // turn on the kernel page table.
         println!("Loading Kernel Page Table...");
         trap::init(); // install kernel trap vector
         trap::plic::init(); // set up interrupt controller
@@ -40,7 +42,15 @@ pub(crate) fn kmain() {
         process::init(); // process table
         process::user_init(); // first user process
         println!("Entering Userland...");
+        STARTED.fetch_not(core::sync::atomic::Ordering::SeqCst);
     } else {
+        while !STARTED.load(core::sync::atomic::Ordering::SeqCst) {
+            spin_loop();
+        }
+
+        Kvm::init_hart(); // turn on paging
+        trap::init(); // install kernel trap vector
+        trap::plic::init_hart(); // ask PLIC for device interrupts
     }
 
     unsafe {
