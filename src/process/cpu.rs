@@ -113,6 +113,7 @@ impl Context {
     }
 }
 
+
 // Per-CPU state.
 #[derive(Clone, Copy)]
 pub(crate) struct CPU {
@@ -142,7 +143,7 @@ pub(crate) struct CMaster {
 impl CMaster {
     const fn new() -> Self {
         Self {
-            cpus: [CPU::new(); NCPU],
+            cpus: [CPU::new(), CPU::new(), CPU::new(), CPU::new()],
         }
     }
 
@@ -166,19 +167,21 @@ impl CMaster {
         cpu.nlock += 1;
     }
 
+    
     pub(crate) fn pop_off(&mut self) {
         let cpu = self.my_cpu_mut();
+        if cpu.nlock == 0 {
+            return;
+        }
         cpu.nlock -= 1;
         if cpu.nlock == 0 && cpu.intr {
             intr_on();
         }
     }
 
-    // Return the current proc for this cpu, or zero if none.
+    // Return the current pin for this cpu, or zero if none.
     pub(crate) fn my_proc(&mut self) -> usize {
-        self.push_off();
-        let pin = unsafe { CMASTER.my_cpu().pin.unwrap() };
-        self.pop_off();
+        let pin = unsafe { CMASTER.my_cpu().pin.unwrap() }; 
         pin
     }
 }

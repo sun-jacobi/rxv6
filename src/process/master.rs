@@ -34,6 +34,8 @@ impl PMaster {
         }
     }
 
+
+
     pub(crate) fn init(&self) {
         let mut procs: [Proc; NPROC] = [0; NPROC].map(|_| Proc::new());
         for (pid, proc) in procs.iter_mut().enumerate() {
@@ -45,6 +47,15 @@ impl PMaster {
             panic!("failed to load the process table");
         }
     }
+
+    pub(crate) fn my_proc(&self) -> &mut Proc {
+        unsafe { CMASTER.push_off();   }
+        let p = unsafe {  &mut PMASTER[CMASTER.my_proc()] };
+        unsafe { CMASTER.pop_off();   }
+        p
+    }
+
+
 
     // Each CPU calls scheduler() after setting itself up.
     // Scheduler never returns.  It loops, doing:
@@ -84,13 +95,10 @@ impl PMaster {
     // be proc->intena and proc->noff, but that would
     // break in the few places where a lock is held but
     // there's no process.
-    pub(crate) fn sched(&mut self) {
+    pub(crate) fn sched(&self, p : &mut Proc) {
         let cpu = unsafe { CMASTER.my_cpu_mut() };
-        let proc = unsafe { &mut self[CMASTER.my_proc()] };
-        // proc.context = Context::default();
-        let old = ptr::addr_of_mut!(proc.context);
+        let old = ptr::addr_of_mut!(p.context);
         let new = ptr::addr_of_mut!(cpu.context);
-
         // switch to scheduler
         unsafe {
             swtch(old, new);
@@ -99,10 +107,10 @@ impl PMaster {
 
     // Give up the CPU for one scheduling round.
     pub(crate) fn step(&mut self) {
-        let pin = unsafe { CMASTER.my_proc() };
-        self.index_mut(pin).info.lock().state = State::Runnable;
-        self.sched();
-        self.index_mut(pin).info.unlock();
+        let p = self.my_proc();
+        p.info.lock().state = State::Runnable;
+        self.sched(p);
+        p.info.unlock();
     }
 
     // Look in the process table for an UNUSED proc.

@@ -2,7 +2,7 @@ use crate::arch::{cpu_id, intr_off, make_satp, w_sip, PGSIZE};
 use crate::layout::TRAPTEXT;
 use crate::memory::layout::{KERNELVEC, TRAMPOLINE};
 use crate::process::cpu::CMASTER;
-use crate::PMASTER;
+use crate::{PMASTER, print};
 use riscv::register::{
     satp,
     scause::{self, Interrupt, Trap},
@@ -29,9 +29,8 @@ extern "C" {
 extern "C" fn kerneltrap() {
     match devintr() {
         // Software interrupt from a machine-mode timer interrupt.
-        // intr -> kt --> sh -> kt -> continue
         Interrupt::SupervisorSoft => {
-            // acknowledge the software interrupt by clearing
+            // acknowledge the software interrupt by clearing 
             // the SSIP bit in sip.
             w_sip(sip::read().bits() & !2);
             let pin = unsafe { CMASTER.my_cpu().pin };
@@ -52,8 +51,9 @@ extern "C" fn kerneltrap() {
 
 #[no_mangle]
 extern "C" fn usertrap() {
+    print!(".");
     assert_eq!(sstatus::read().spp(), SPP::User);
-    let p = unsafe { &mut PMASTER[CMASTER.my_proc()] };
+    let p = unsafe { PMASTER.my_proc() };
     let trapframe = p.trapframe;
     unsafe {
         riscv::register::stvec::write(KERNELVEC as usize, TrapMode::Direct);
@@ -76,24 +76,26 @@ fn devintr() -> Interrupt {
     let scause = scause::read().cause();
     match scause {
         Trap::Interrupt(i) => i,
-        Trap::Exception(e) => panic!("Kernel Panic: Exception {:?}", e),
+        Trap::Exception(e) => panic!("Exception {:?}", e),
     }
 }
 
 // A fork child's very first scheduling by scheduler()
 // will swtch to forkret.
 pub(crate) fn forkret() {
-    let p = unsafe { &mut PMASTER[CMASTER.my_proc()] };
+    let p = unsafe { PMASTER.my_proc() };
     p.info.unlock();
     usertrapret();
 }
 
 // return to user space
 pub(crate) fn usertrapret() {
-    let p = unsafe { &mut PMASTER[CMASTER.my_proc()] };
+    let p = unsafe { PMASTER.my_proc() }; 
     intr_off();
     // send syscalls, interrupts, and exceptions to uservec in trampoline.
     let trapframe = p.trapframe;
+
+    // use uservec for supervisor interrupt 
     unsafe {
         let trampoline_uservec = TRAMPOLINE + (uservec as u64 - TRAPTEXT);
         stvec::write(trampoline_uservec as usize, TrapMode::Direct);

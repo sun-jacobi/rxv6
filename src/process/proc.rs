@@ -26,14 +26,14 @@ pub(crate) struct Proc {
 
 pub(crate) struct ProcInfo {
     pub(crate) state: State,
-    pub(crate) hart_id: usize,
+    pub(crate) _hart_id: usize,
 }
 
 impl ProcInfo {
     pub fn new() -> Self {
         Self {
             state: State::Unused,
-            hart_id: 42,
+            _hart_id: 42,
         }
     }
 }

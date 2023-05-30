@@ -1,10 +1,10 @@
-use crate::arch::{cpu_id, intr_off, intr_on};
+
 use crate::process::cpu::CMASTER;
 use core::hint::spin_loop;
 use core::ops::{Deref, DerefMut, Drop};
 use core::sync::atomic::Ordering::{Acquire, Release};
 use core::{cell::UnsafeCell, sync::atomic::AtomicBool};
-use riscv::register::sstatus;
+
 
 // Thanks to Mara Bos's brilliant book!
 // https://marabos.nl/atomics/
@@ -24,34 +24,21 @@ impl<T> SpinLock<T> {
     }
 
     pub(crate) fn lock(&self) -> Guard<T> {
-        let old = sstatus::read().sie();
-        intr_off(); // disable the interrupt to avoid the deadlock.
-        let cpu = unsafe { CMASTER.my_cpu_mut() };
-        let hart = cpu_id();
-        cpu.intr = old;
-        cpu.nlock += 1;
+        unsafe { CMASTER.push_off();}
         while self.locked.swap(true, Acquire) {
             spin_loop();
         }
-        Guard { lock: self, hart }
+        Guard { lock: self}
     }
 
     pub(crate) fn unlock(&self) {
         self.locked.store(false, Release);
-        let cpu = unsafe { CMASTER.my_cpu_mut() };
-        if cpu.nlock == 0 {
-            return;
-        }
-        cpu.nlock -= 1;
-        if cpu.nlock == 0 && cpu.intr {
-            intr_on();
-        }
+        unsafe { CMASTER.pop_off();}
     }
 }
 
 pub struct Guard<'a, T> {
     lock: &'a SpinLock<T>,
-    hart: usize,
 }
 
 impl<T> Deref for Guard<'_, T> {
@@ -70,13 +57,6 @@ impl<T> DerefMut for Guard<'_, T> {
 impl<T> Drop for Guard<'_, T> {
     fn drop(&mut self) {
         self.lock.locked.store(false, Release);
-        let cpu = unsafe { CMASTER.my_cpu_mut() };
-        if cpu.nlock == 0 {
-            return;
-        }
-        cpu.nlock -= 1;
-        if cpu.nlock == 0 && cpu.intr {
-            intr_on();
-        }
+        unsafe { CMASTER.pop_off();}
     }
 }
