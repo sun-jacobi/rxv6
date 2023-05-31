@@ -1,3 +1,5 @@
+use riscv::register::sstatus;
+
 use super::cpu::{Context, TrapFrame};
 use crate::arch::{intr_on, NPROC, PGSIZE};
 use crate::layout::TRAPFRAME;
@@ -95,8 +97,10 @@ impl PMaster {
     // be proc->intena and proc->noff, but that would
     // break in the few places where a lock is held but
     // there's no process.
-    pub(crate) fn sched(&self, p : &mut Proc) {
+    pub(crate) fn sched(&self) { 
+        assert!(!sstatus::read().sie());
         let cpu = unsafe { CMASTER.my_cpu_mut() };
+        let p = self.my_proc();
         let old = ptr::addr_of_mut!(p.context);
         let new = ptr::addr_of_mut!(cpu.context);
         // switch to scheduler
@@ -108,9 +112,9 @@ impl PMaster {
     // Give up the CPU for one scheduling round.
     pub(crate) fn step(&mut self) {
         let p = self.my_proc();
-        p.info.lock().state = State::Runnable;
-        self.sched(p);
-        p.info.unlock();
+        let mut proc_info = p.info.lock();
+        proc_info.state = State::Runnable;
+        self.sched();
     }
 
     // Look in the process table for an UNUSED proc.

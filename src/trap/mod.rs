@@ -27,6 +27,7 @@ extern "C" {
 
 #[no_mangle]
 extern "C" fn kerneltrap() {
+    assert!(!sstatus::read().sie());
     match devintr() {
         // Software interrupt from a machine-mode timer interrupt.
         Interrupt::SupervisorSoft => {
@@ -37,7 +38,7 @@ extern "C" fn kerneltrap() {
             if pin != None {
                 // give up the CPU.
                 unsafe {
-                    PMASTER.step();
+                    // PMASTER.step();
                 }
             }
         }
@@ -51,7 +52,7 @@ extern "C" fn kerneltrap() {
 
 #[no_mangle]
 extern "C" fn usertrap() {
-    print!(".");
+    print!("{}", cpu_id());
     assert_eq!(sstatus::read().spp(), SPP::User);
     let p = unsafe { PMASTER.my_proc() };
     let trapframe = p.trapframe;
