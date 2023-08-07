@@ -36,8 +36,6 @@ impl PMaster {
         }
     }
 
-
-
     pub(crate) fn init(&self) {
         let mut procs: [Proc; NPROC] = [0; NPROC].map(|_| Proc::new());
         for (pid, proc) in procs.iter_mut().enumerate() {
@@ -50,14 +48,16 @@ impl PMaster {
         }
     }
 
-    pub(crate) fn my_proc(&self) -> &mut Proc {
-        unsafe { CMASTER.push_off();   }
-        let p = unsafe {  &mut PMASTER[CMASTER.my_proc()] };
-        unsafe { CMASTER.pop_off();   }
+    pub(crate) unsafe fn my_proc(&self) -> &mut Proc {
+        unsafe {
+            CMASTER.push_off();
+        }
+        let p = unsafe { &mut PMASTER[CMASTER.my_proc()] };
+        unsafe {
+            CMASTER.pop_off();
+        }
         p
     }
-
-
 
     // Each CPU calls scheduler() after setting itself up.
     // Scheduler never returns.  It loops, doing:
@@ -97,10 +97,10 @@ impl PMaster {
     // be proc->intena and proc->noff, but that would
     // break in the few places where a lock is held but
     // there's no process.
-    pub(crate) fn sched(&self) { 
+    pub(crate) fn sched(&self) {
         assert!(!sstatus::read().sie());
         let cpu = unsafe { CMASTER.my_cpu_mut() };
-        let p = self.my_proc();
+        let p = unsafe { self.my_proc() };
         let old = ptr::addr_of_mut!(p.context);
         let new = ptr::addr_of_mut!(cpu.context);
         // switch to scheduler
@@ -110,8 +110,8 @@ impl PMaster {
     }
 
     // Give up the CPU for one scheduling round.
-    pub(crate) fn step(&mut self) {
-        let p = self.my_proc();
+    pub(crate) fn step(&self) {
+        let p = unsafe { self.my_proc() };
         let mut proc_info = p.info.lock();
         proc_info.state = State::Runnable;
         self.sched();
@@ -161,13 +161,13 @@ impl PMaster {
     }
 
     // Set up first user process.
-    pub(crate) fn userinit(&mut self) {
+    pub(crate) fn user_init(&mut self) {
         let proc = if let Some(pin) = self.alloc() {
             &mut self[pin]
         } else {
             panic!("failed to allocate the first process");
         };
-        if let None = PageTable::uvmfirst(proc.pagetable) {
+        if PageTable::uvmfirst(proc.pagetable).is_none() {
             panic!("failed to create page table for the first procress");
         }
 

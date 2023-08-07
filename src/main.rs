@@ -7,13 +7,19 @@ mod driver;
 mod lock;
 mod memory;
 mod process;
+mod syscall;
 mod trap;
 
 use crate::{
     arch::cpu_id,
     memory::{layout, vm::Kvm},
 };
-use core::{hint::spin_loop, panic::PanicInfo, sync::atomic::AtomicBool};
+use core::sync::atomic::Ordering::SeqCst;
+use core::{
+    hint::spin_loop,
+    panic::PanicInfo,
+    sync::atomic::{fence, AtomicBool},
+};
 use memory::kalloc::Kalloc;
 use process::master::PMASTER;
 //====================================
@@ -47,6 +53,8 @@ pub(crate) fn kmain() {
         while !STARTED.load(core::sync::atomic::Ordering::SeqCst) {
             spin_loop();
         }
+
+        fence(SeqCst); // memory barrier
 
         Kvm::init_hart(); // turn on paging
         trap::init(); // install kernel trap vector

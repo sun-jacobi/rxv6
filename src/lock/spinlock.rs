@@ -1,10 +1,8 @@
-
 use crate::process::cpu::CMASTER;
 use core::hint::spin_loop;
 use core::ops::{Deref, DerefMut, Drop};
 use core::sync::atomic::Ordering::{Acquire, Release};
 use core::{cell::UnsafeCell, sync::atomic::AtomicBool};
-
 
 // Thanks to Mara Bos's brilliant book!
 // https://marabos.nl/atomics/
@@ -24,16 +22,20 @@ impl<T> SpinLock<T> {
     }
 
     pub(crate) fn lock(&self) -> Guard<T> {
-        unsafe { CMASTER.push_off();}
+        unsafe {
+            CMASTER.push_off();
+        }
         while self.locked.swap(true, Acquire) {
             spin_loop();
         }
-        Guard { lock: self}
+        Guard { lock: self }
     }
 
-    pub(crate) fn unlock(&self) {
+    pub(crate) unsafe fn unlock(&self) {
         self.locked.store(false, Release);
-        unsafe { CMASTER.pop_off();}
+        unsafe {
+            CMASTER.pop_off();
+        }
     }
 }
 
@@ -57,6 +59,8 @@ impl<T> DerefMut for Guard<'_, T> {
 impl<T> Drop for Guard<'_, T> {
     fn drop(&mut self) {
         self.lock.locked.store(false, Release);
-        unsafe { CMASTER.pop_off();}
+        unsafe {
+            CMASTER.pop_off();
+        }
     }
 }

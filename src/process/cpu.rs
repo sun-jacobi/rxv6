@@ -65,7 +65,7 @@ pub(crate) struct TrapFrame {
     /* 144 */ a4: u64,
     /* 152 */ a5: u64,
     /* 160 */ a6: u64,
-    /* 168 */ a7: u64,
+    /* 168 */ pub(crate) a7: u64,
     /* 176 */ s2: u64,
     /* 184 */ s3: u64,
     /* 192 */ s4: u64,
@@ -112,7 +112,6 @@ impl Context {
         }
     }
 }
-
 
 // Per-CPU state.
 #[derive(Clone, Copy)]
@@ -167,12 +166,9 @@ impl CMaster {
         cpu.nlock += 1;
     }
 
-    
     pub(crate) fn pop_off(&mut self) {
         let cpu = self.my_cpu_mut();
-        if cpu.nlock == 0 {
-            return;
-        }
+        assert_ne!(cpu.nlock, 0);
         cpu.nlock -= 1;
         if cpu.nlock == 0 && cpu.intr {
             intr_on();
@@ -181,7 +177,7 @@ impl CMaster {
 
     // Return the current pin for this cpu, or zero if none.
     pub(crate) fn my_proc(&mut self) -> usize {
-        let pin = unsafe { CMASTER.my_cpu().pin.unwrap() }; 
+        let pin = unsafe { CMASTER.my_cpu().pin.unwrap() };
         pin
     }
 }

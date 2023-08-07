@@ -12,6 +12,6 @@ pub(crate) fn init() {
 
 pub(crate) fn user_init() {
     unsafe {
-        PMASTER.userinit();
+        PMASTER.user_init();
     }
 }
