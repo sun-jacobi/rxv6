@@ -3,6 +3,7 @@ use crate::layout::TRAPTEXT;
 use crate::memory::layout::{KERNELVEC, TRAMPOLINE};
 use crate::process::cpu::CMASTER;
 use crate::{syscall, PMASTER};
+use riscv::register::scause::Exception;
 use riscv::register::{
     satp,
     scause::{self, Interrupt, Trap},
@@ -62,36 +63,28 @@ extern "C" fn usertrap() {
         (*trapframe).epc = sepc::read() as u64;
     }
 
-    match devintr() {
+    match scause::read().cause() {
         // give up the CPU if this is a timer interrupt.
-        Interrupt::SupervisorSoft => unsafe {
+        Trap::Interrupt(Interrupt::SupervisorSoft) => unsafe {
             // timer interrupt
             PMASTER.step();
         },
 
-        Interrupt::UserExternal => {
+        Trap::Exception(Exception::UserEnvCall) => {
             // userland system call
 
             // an interrupt will change sepc, scause, and sstatus,
             // so enable only now that we're done with those registers.
             intr_off();
-
-            unsafe {
-                // sepc points to the ecall instruction,
-                // but we want to return to the next instruction.
-                (*trapframe).epc += 4;
-            }
-
             syscall::handle(trapframe);
         }
 
-        i => panic!("unsupported interrupt {:?}", i),
+        t => panic!("could not handle{:?}", t),
     }
     usertrapret();
 }
 
-// check if it's an external interrupt or software interrupt,
-// and handle it.
+// check if it's an external interrupt or software interrupt,and handle it.
 fn devintr() -> Interrupt {
     let scause = scause::read().cause();
     match scause {
