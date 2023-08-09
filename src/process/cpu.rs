@@ -7,6 +7,8 @@ use crate::arch::{intr_off, intr_on};
 use crate::cpu_id;
 use crate::memory::kalloc::KALLOC;
 
+use super::proc::Proc;
+
 // Saved registers for kernel context switches.
 #[repr(C)]
 #[derive(Clone, Copy)]
@@ -117,6 +119,7 @@ impl Context {
 #[derive(Clone, Copy)]
 pub(crate) struct CPU {
     pub(crate) context: Context,
+    pub(crate) proc: Option<*mut Proc>,
     pub(crate) pin: Option<usize>, // index in process table
     pub(crate) nlock: u8,          // number of acquired lock
     pub(crate) intr: bool,
@@ -126,6 +129,7 @@ impl CPU {
     pub(crate) const fn new() -> Self {
         CPU {
             context: Context::default(),
+            proc: None,
             pin: None,
             nlock: 0,    // num of locks be used
             intr: false, // is interrupt already on
@@ -173,11 +177,5 @@ impl CMaster {
         if cpu.nlock == 0 && cpu.intr {
             intr_on();
         }
-    }
-
-    // Return the current pin for this cpu, or zero if none.
-    pub(crate) fn my_proc(&mut self) -> usize {
-        let pin = unsafe { CMASTER.my_cpu().pin.unwrap() };
-        pin
     }
 }

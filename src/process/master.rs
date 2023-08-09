@@ -1,5 +1,3 @@
-use riscv::register::sstatus;
-
 use super::cpu::{Context, TrapFrame};
 use crate::arch::{intr_on, NPROC, PGSIZE};
 use crate::layout::TRAPFRAME;
@@ -12,6 +10,7 @@ use crate::trap::forkret;
 use core::cell::OnceCell;
 use core::ops::{Add, Index, IndexMut};
 use core::ptr;
+use riscv::register::sstatus;
 
 extern "C" {
     // swtch.S
@@ -39,7 +38,7 @@ impl PMaster {
     pub(crate) fn init(&self) {
         let mut procs: [Proc; NPROC] = [0; NPROC].map(|_| Proc::new());
         for (pid, proc) in procs.iter_mut().enumerate() {
-            if proc.kstack.set(kstack_start(pid)).is_err() {
+            if proc.context.kstack.set(kstack_start(pid)).is_err() {
                 panic!("failed to load process table");
             }
         }
@@ -49,14 +48,14 @@ impl PMaster {
     }
 
     pub(crate) unsafe fn my_proc(&self) -> &mut Proc {
-        unsafe {
-            CMASTER.push_off();
-        }
-        let p = unsafe { &mut PMASTER[CMASTER.my_proc()] };
-        unsafe {
-            CMASTER.pop_off();
-        }
-        p
+        CMASTER.push_off();
+        let cpu = CMASTER.my_cpu_mut();
+
+        let proc = cpu.proc.unwrap_or_else(|| panic!("not holding process"));
+
+        CMASTER.pop_off();
+        proc.as_mut()
+            .unwrap_or_else(|| panic!("not holding process"))
     }
 
     // Each CPU calls scheduler() after setting itself up.
@@ -72,14 +71,15 @@ impl PMaster {
             intr_on();
             for i in 0..NPROC {
                 let proc = &mut self[i];
+                my_cpu.proc = Some(proc as *mut Proc);
                 let mut proc_info = proc.info.lock();
+                let proc_context = &mut proc.context;
                 if let State::Runnable = proc_info.state {
                     // cpu should not master any process now.
                     assert!(my_cpu.pin.is_none());
                     proc_info.state = State::Running;
-                    my_cpu.pin = Some(i);
                     let old = ptr::addr_of_mut!(my_cpu.context);
-                    let new = ptr::addr_of_mut!(proc.context);
+                    let new = ptr::addr_of_mut!(proc_context.context);
                     // Switch to chosen process.
                     unsafe {
                         swtch(old, new);
@@ -100,8 +100,8 @@ impl PMaster {
     pub(crate) fn sched(&self) {
         assert!(!sstatus::read().sie());
         let cpu = unsafe { CMASTER.my_cpu_mut() };
-        let p = unsafe { self.my_proc() };
-        let old = ptr::addr_of_mut!(p.context);
+        let proc_context = unsafe { &mut self.my_proc().context };
+        let old = ptr::addr_of_mut!(proc_context.context);
         let new = ptr::addr_of_mut!(cpu.context);
         // switch to scheduler
         unsafe {
@@ -125,27 +125,33 @@ impl PMaster {
         for pin in 0..NPROC {
             let proc = &mut self[pin];
             let mut proc_info = proc.info.lock();
+            let proc_context = &mut proc.context;
             if let State::Unused = proc_info.state {
                 let new_pid = Self::alloc_pid();
-                proc.pid = new_pid;
+                proc_context.pid = new_pid;
                 proc_info.state = State::Used;
                 // Allocate a trapframe page.
-                proc.trapframe = TrapFrame::new()?;
+                proc_context.trapframe = TrapFrame::new()?;
 
                 // An empty user page tab
                 let mut pagetable = PageTable::create_table();
                 unsafe {
                     pagetable.map(TRAMPOLINE, TRAPTEXT, PGSIZE, PTE_R | PTE_X);
-                    pagetable.map(TRAPFRAME, proc.trapframe as u64, PGSIZE, PTE_R | PTE_W);
+                    pagetable.map(
+                        TRAPFRAME,
+                        proc_context.trapframe as u64,
+                        PGSIZE,
+                        PTE_R | PTE_W,
+                    );
                 }
 
-                proc.pagetable = pagetable.base_addr();
+                proc_context.pagetable = pagetable.base_addr();
                 // Set up new context to start executing at forkret,
                 // which returns to user space.
                 let mut context = Context::default();
                 context.ra = forkret as u64;
                 context.sp = kstack_end(pin);
-                proc.context = context;
+                proc_context.context = context;
                 return Some(pin);
             }
         }
@@ -167,11 +173,11 @@ impl PMaster {
         } else {
             panic!("failed to allocate the first process");
         };
-        if PageTable::uvmfirst(proc.pagetable).is_none() {
+        if PageTable::uvmfirst(proc.context.pagetable).is_none() {
             panic!("failed to create page table for the first procress");
         }
 
-        let trapframe = proc.trapframe;
+        let trapframe = proc.context.trapframe;
         unsafe {
             (*trapframe).epc = 0; // user program counter
             (*trapframe).sp = PGSIZE; // user stack pointer
@@ -193,6 +199,8 @@ impl IndexMut<usize> for PMaster {
     }
 }
 
-pub(crate) const INITCODE: [u8; 16] = [
-    0x13, 0x05, 0xa0, 0x02, 0x93, 0x08, 0x60, 0x01, 0x73, 0x00, 0x00, 0x00, 0x6f, 0xf0, 0x9f, 0xff,
+pub(crate) const INITCODE: [u8; 8] = [
+    0x13, 0x05, 0xa0, 0x02, //
+    /*0x93, 0x08, 0x60, 0x01, 0x73, 0x00, 0x00, 0x00,*/
+    0x6f, 0xf0, 0xdf, 0xff,
 ];

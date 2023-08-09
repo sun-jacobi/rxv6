@@ -2,7 +2,7 @@ use crate::arch::{cpu_id, intr_off, make_satp, w_sip, PGSIZE};
 use crate::layout::TRAPTEXT;
 use crate::memory::layout::{KERNELVEC, TRAMPOLINE};
 use crate::process::cpu::CMASTER;
-use crate::{syscall, PMASTER};
+use crate::{print, syscall, PMASTER};
 use riscv::register::scause::Exception;
 use riscv::register::{
     satp,
@@ -54,7 +54,7 @@ extern "C" fn kerneltrap() {
 extern "C" fn usertrap() {
     assert_eq!(sstatus::read().spp(), SPP::User);
     let p = unsafe { PMASTER.my_proc() };
-    let trapframe = p.trapframe;
+    let trapframe = p.context.trapframe;
 
     // send interrupts and exceptions to kerneltrap(),
     // since we're now in the kernel.
@@ -104,9 +104,10 @@ pub(crate) fn forkret() {
 // return to user space
 pub(crate) fn usertrapret() {
     intr_off();
+    print!("{}", cpu_id());
     let p = unsafe { PMASTER.my_proc() };
     // send syscalls, interrupts, and exceptions to uservec in trampoline.
-    let trapframe = p.trapframe;
+    let trapframe = p.context.trapframe;
 
     // use uservec for supervisor interrupt
     unsafe {
@@ -120,7 +121,7 @@ pub(crate) fn usertrapret() {
         // kernel page table
         (*trapframe).kernel_satp = satp::read().bits() as u64;
         // process's kernel stack
-        (*trapframe).kernel_sp = p.kstack.get().unwrap() + PGSIZE;
+        (*trapframe).kernel_sp = p.context.kstack.get().unwrap() + PGSIZE;
         (*trapframe).kernel_trap = usertrap as u64;
         // hartid
         (*trapframe).kernel_hartid = cpu_id() as u64;
@@ -133,10 +134,10 @@ pub(crate) fn usertrapret() {
         sstatus::set_spp(SPP::User);
         sstatus::set_spie();
         // set S Exception Program Counter to the saved user pc.
-        sepc::write((*p.trapframe).epc as usize);
+        sepc::write((*p.context.trapframe).epc as usize);
     }
     // tell trampoline.S the user page table to switch to.
-    let satp = make_satp(p.pagetable);
+    let satp = make_satp(p.context.pagetable);
     let trampoline_userret_fn: extern "C" fn(satp: u64) = unsafe {
         let trampoline_userret_addr = TRAMPOLINE + (userret as u64 - TRAPTEXT);
         core::mem::transmute(trampoline_userret_addr)
