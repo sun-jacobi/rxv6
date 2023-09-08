@@ -8,11 +8,11 @@ _entry:
         # set up a stack for C.
         # stack0 is declared in start.c,
         # with a 4096-byte stack per CPU.  
-        la sp, stack_start
-        li a0, 2097152
+        la sp, stack_end
+        li a0, 1024*1024*2 # 2MiB 
         csrr a1, mhartid
         addi a1, a1, 1 
-        mul a0, a0, a1 # sp = stack0 + (hartid + 1) * 16384
+        mul a0, a0, a1 # sp = stack_end + (hartid + 1)*2MiB 
         add sp, sp, a0 # the top of each stack
         call start # jump to start() in start.c
 spin:

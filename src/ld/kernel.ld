@@ -32,10 +32,14 @@ SECTIONS
     . = ALIGN(16);
     *(.data .data.*)
     . = ALIGN(4096);
-    PROVIDE(stack_start = .); /* stack for cpus*/ 
+    PROVIDE(heap_start = .); /* heap */ 
+    . += 1024*1024*2;
+    PROVIDE(heap_end = .); 
+    
+    PROVIDE(stack_end = .); /* stack for cpus*/ 
     . += 1024*1024*2; 
     . = ALIGN(4096);
-    PROVIDE(stack_end = .);
+    PROVIDE(stack_start = .);
   }
 
   .bss : {
