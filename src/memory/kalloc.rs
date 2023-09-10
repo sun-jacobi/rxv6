@@ -24,7 +24,7 @@ impl Kalloc {
     }
 
     // init the kernel page allocator
-    pub fn kinit() {
+    pub fn init_kernel_page_allocator() {
         unsafe {
             KALLOC.lock().insert(END, PHYSTOP);
         }

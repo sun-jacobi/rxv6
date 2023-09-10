@@ -28,10 +28,10 @@ unsafe impl GlobalAlloc for Kmalloc {
 #[global_allocator]
 static KMALLOC: Kmalloc = Kmalloc(SpinLock::new(BuddyAlloc::new()));
 
-
 impl Kmalloc {
-    pub(crate) fn init() {
-        
-        unsafe { KMALLOC.0.lock().insert(HEAP_START,  HEAP_START + HEAP_SIZE); }
+    pub(crate) fn init_kernel_heap() {
+        unsafe {
+            KMALLOC.0.lock().insert(HEAP_START, HEAP_START + HEAP_SIZE);
+        }
     }
 }

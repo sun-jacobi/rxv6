@@ -12,7 +12,6 @@ pub struct BareList {
 }
 
 impl BareList {
-
     pub const fn new() -> Self {
         Self { head: None }
     }

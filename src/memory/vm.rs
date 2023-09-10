@@ -53,7 +53,7 @@ pub static mut KVM: Kvm = Kvm { root: 0 };
 
 impl Kvm {
     // create the kernel map
-    pub fn init() {
+    pub fn init_kernel_page_table() {
         let mut kvm = PageTable::create_table();
         unsafe {
             // uart register

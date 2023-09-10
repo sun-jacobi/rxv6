@@ -17,7 +17,7 @@ extern crate alloc;
 
 use crate::{
     arch::cpu_id,
-    memory::{layout, vm::Kvm, kmalloc::Kmalloc},
+    memory::{kmalloc::Kmalloc, layout, vm::Kvm},
 };
 use core::sync::atomic::Ordering::SeqCst;
 use core::{
@@ -42,10 +42,10 @@ pub(crate) fn kmain() {
         print!("\x1B[2J\x1B[1;1H");
         println!("RXV6: An Eduacationol OS In Rust.");
         println!("{}", LOGO);
-        Kalloc::kinit(); // init the kernel page allocator.
-        Kvm::init(); // create the kernel page table.
+        Kalloc::init_kernel_page_allocator(); // init the kernel page allocator.
+        Kvm::init_kernel_page_table(); // create the kernel page table.
         Kvm::init_hart(); // turn on the kernel page table.
-        Kmalloc::init(); // init the kernel heap
+        Kmalloc::init_kernel_heap(); // init the kernel heap
         println!("Loading Kernel Page Table...");
         trap::init(); // install kernel trap vector
         trap::plic::init(); // set up interrupt controller
