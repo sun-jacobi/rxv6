@@ -33,7 +33,7 @@ SECTIONS
     *(.data .data.*)
     . = ALIGN(4096);
     PROVIDE(heap_start = .); /* heap */ 
-    . += 1024*1024*2;
+    . += 1024*1024*64;
     PROVIDE(heap_end = .); 
     
     PROVIDE(stack_end = .); /* stack for cpus*/ 

@@ -75,6 +75,7 @@ extern "C" {
     static mut trampoline: u64; // trap code position
     static mut timervec: u64; // machine-mode timer interrupt code
     static mut kernelvec: u64; // kernel trap code
+    static mut heap_start: u64; // kernel heap start
 }
 
 pub unsafe fn init_linker_variable() {
@@ -83,6 +84,7 @@ pub unsafe fn init_linker_variable() {
     TRAPTEXT = (&trampoline as *const u64) as u64;
     TIMERVEC = (&timervec as *const u64) as u64;
     KERNELVEC = (&kernelvec as *const u64) as u64;
+    HEAP_START = (&heap_start as *const u64) as u64;
 }
 
 pub static mut END: u64 = 0;
@@ -90,3 +92,4 @@ pub static mut ETEXT: u64 = 0;
 pub static mut TRAPTEXT: u64 = 0;
 pub static mut TIMERVEC: u64 = 0;
 pub static mut KERNELVEC: u64 = 0;
+pub static mut HEAP_START: u64 = 0;

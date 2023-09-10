@@ -1,6 +1,9 @@
 #![no_main]
 #![no_std]
 #![feature(atomic_bool_fetch_not)]
+#![feature(strict_provenance)]
+#![feature(const_trait_impl)]
+
 mod arch;
 mod boot;
 mod driver;
@@ -10,9 +13,11 @@ mod process;
 mod syscall;
 mod trap;
 
+extern crate alloc;
+
 use crate::{
     arch::cpu_id,
-    memory::{layout, vm::Kvm},
+    memory::{layout, vm::Kvm, kmalloc::Kmalloc},
 };
 use core::sync::atomic::Ordering::SeqCst;
 use core::{
@@ -40,6 +45,7 @@ pub(crate) fn kmain() {
         Kalloc::kinit(); // init the kernel page allocator.
         Kvm::init(); // create the kernel page table.
         Kvm::init_hart(); // turn on the kernel page table.
+        Kmalloc::init(); // init the kernel heap
         println!("Loading Kernel Page Table...");
         trap::init(); // install kernel trap vector
         trap::plic::init(); // set up interrupt controller

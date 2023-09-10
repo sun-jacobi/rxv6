@@ -6,6 +6,7 @@
 + [x] MMU
 + [x] Trap
 + [x] Round Robin Scheduling
++ [x] Heap allocator
 + [ ] System Call
 + [ ] File System 
 + [ ] ELF Loader

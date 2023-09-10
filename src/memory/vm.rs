@@ -9,10 +9,10 @@ use riscv::asm::sfence_vma_all;
 use riscv::register::satp;
 use riscv::register::satp::Mode;
 
-// Virtual address : 39 = 9 + 9 + 9 + 12
-// rxv6 use a 3 level Page table
-// 9 bits represent the idx of each level
-// 12 bits represent the offset in physical address
+/// Virtual address : 39 = 9 + 9 + 9 + 12
+/// rxv6 use a 3 level Page table
+/// 9 bits represent the idx of each level
+/// 12 bits represent the offset in physical address
 pub struct Kvm {
     root: u64,
 }

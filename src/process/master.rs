@@ -7,6 +7,7 @@ use crate::memory::vm::{PageTable, PTE_R, PTE_W, PTE_X};
 use crate::process::cpu::CMASTER;
 use crate::process::proc::{Proc, State};
 use crate::trap::forkret;
+use crate::{print, println};
 use core::cell::OnceCell;
 use core::ops::{Add, Index, IndexMut};
 use core::ptr;
@@ -75,6 +76,7 @@ impl PMaster {
                 let mut proc_info = proc.info.lock();
                 let proc_context = &mut proc.context;
                 if let State::Runnable = proc_info.state {
+                    println!("Switch to process index of {}", i);
                     // cpu should not master any process now.
                     assert!(my_cpu.pin.is_none());
                     proc_info.state = State::Running;
