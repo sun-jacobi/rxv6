@@ -17,7 +17,7 @@ extern crate alloc;
 
 use crate::{
     arch::cpu_id,
-    memory::{heap, kmalloc::Kmalloc, layout, vm::Kvm},
+    memory::{heap, layout, vm::Kvm},
 };
 use core::sync::atomic::Ordering::SeqCst;
 use core::{
