@@ -139,7 +139,7 @@ pub(crate) fn usertrapret() {
     // tell trampoline.S the user page table to switch to.
     let satp = make_satp(p.context.pagetable);
     let trampoline_userret_fn: extern "C" fn(satp: u64) = unsafe {
-        let trampoline_userret_addr = TRAMPOLINE + (usertrap as u64 - TRAPTEXT);
+        let trampoline_userret_addr = TRAMPOLINE + (userret as u64 - TRAPTEXT);
         core::mem::transmute(trampoline_userret_addr)
     };
     trampoline_userret_fn(satp);
