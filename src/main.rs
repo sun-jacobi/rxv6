@@ -17,7 +17,7 @@ extern crate alloc;
 
 use crate::{
     arch::cpu_id,
-    memory::{kmalloc::Kmalloc, layout, vm::Kvm},
+    memory::{heap, kmalloc::Kmalloc, layout, vm::Kvm},
 };
 use core::sync::atomic::Ordering::SeqCst;
 use core::{
@@ -45,7 +45,7 @@ pub(crate) fn kmain() {
         Kalloc::init_kernel_page_allocator(); // init the kernel page allocator.
         Kvm::init_kernel_page_table(); // create the kernel page table.
         Kvm::init_hart(); // turn on the kernel page table.
-        Kmalloc::init_kernel_heap(); // init the kernel heap
+        heap::init_kernel_heap(); // init the kernel heap
         println!("Loading Kernel Page Table...");
         trap::init(); // install kernel trap vector
         trap::plic::init(); // set up interrupt controller

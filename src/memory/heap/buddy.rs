@@ -3,7 +3,7 @@ use core::{
     ptr::{null_mut, NonNull},
 };
 
-use crate::memory::kmalloc::list::{BareList, Node};
+use crate::memory::heap::list::{BareList, Node};
 
 /// Buddy system allocator
 /// L : number of size classes
@@ -55,7 +55,7 @@ impl<const L: usize, const G: u64> BuddyAlloc<L, G> {
             // if necessary, split the block
             self.split_block(ptr, level, size);
 
-            addr as *mut u8
+            return addr as *mut u8;
         } else {
             // try to ask for more memory
             let addr = if let Some((_, addr)) = self.extend_heap(layout) {
@@ -64,7 +64,7 @@ impl<const L: usize, const G: u64> BuddyAlloc<L, G> {
                 return null_mut();
             };
 
-            addr as *mut u8
+            return addr as *mut u8;
         }
     }
 
